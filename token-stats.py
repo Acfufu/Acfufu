@@ -24,19 +24,21 @@ token-stats.py: 生成 GitHub profile 的 AI token usage SVG 卡片 + 自包含�
 守护特性（零系统级痕迹）：
   - 不注册 crontab / launchd；重启后自动停，不留任何系统文件
   - PID/日志在仓库内（.token-stats-daemon.pid / .token-stats-daemon.log），删仓库即全部消失
+  - 单实例互斥：fcntl.flock 内核级锁，并发启动也只会有一个守护（无 TOCTOU 竞态）
   - 每 60s 自检仓库是否还在；删仓库 → 1 分钟内自行退出
 
 依赖: 无第三方 Python 包（联网定价失败自动用缓存）
 """
 
 import argparse
+import datetime
+import fcntl
 import json
 import math
 import os
 import signal
 import subprocess
 import sys
-import datetime
 import time
 import urllib.request
 
@@ -672,6 +674,32 @@ def _pid_alive(pid):
         return False
 
 
+def _pid_cmd(pid):
+    """ps 取进程命令行；失败/不存在返回空串（校验 pid 身份，防 PID 复用误判）"""
+    try:
+        out = subprocess.run(["ps", "-p", str(pid), "-o", "command="],
+                             capture_output=True, text=True, timeout=5)
+        return (out.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def _lock_daemon():
+    """原子抢占守护独占锁（fcntl.flock 内核级互斥，无 TOCTOU 竞态）。
+
+    返回持有锁的 fd；抢不到返回 None（已有守护在跑）。
+    守护存活期间必须持有该 fd —— 锁随进程消亡自动释放，pid 文件残留无害。
+    """
+    fd = os.open(PID_FILE, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None
+    os.ftruncate(fd, 0)
+    return fd
+
+
 def git_sync():
     """提交 SVG 变更并推送（无变更跳过 commit；推送失败留给下轮重试）"""
     if subprocess.run(["git", "diff", "--quiet", "--", "token-stats*.svg"]).returncode == 0:
@@ -684,7 +712,8 @@ def git_sync():
     print("   推送成功" if r.returncode == 0 else "   推送失败（下轮自动重试）")
 
 
-def daemon_loop(interval_hours):
+def daemon_loop(interval_hours, lock_fd):
+    """守护主循环。lock_fd 必须持有到进程退出（flock 锁随 fd 释放）。"""
     signal.signal(signal.SIGTERM, lambda *_: os._exit(0))
     chunks = max(1, int(interval_hours * 3600 / CHECK_EVERY))
     print(f"守护启动 interval={interval_hours}h pid={os.getpid()}", flush=True)
@@ -701,46 +730,80 @@ def daemon_loop(interval_hours):
         if not os.path.exists(os.path.join(REPO_DIR, ".git")):
             print("仓库已删除，守护退出", flush=True)
             break
+    del lock_fd
 
 
 def start_daemon(interval_hours):
-    if os.path.exists(PID_FILE):
-        pid = open(PID_FILE).read().strip()
-        if pid.isdigit() and _pid_alive(int(pid)):
-            print(f"   后台守护已在运行 (pid {pid})，无需重启")
-            return
-        os.remove(PID_FILE)
+    fd = _lock_daemon()
+    if fd is None:
+        pid = ""
+        try:
+            pid = open(PID_FILE).read().strip()
+        except OSError:
+            pass
+        print(f"   后台守护已在运行 (pid {pid})，无需重启" if pid else "   后台守护已在运行，无需重启")
+        return
     pid = os.fork()
     if pid > 0:
-        open(PID_FILE, "w").write(str(pid))
+        os.write(fd, str(pid).encode())
+        os.close(fd)          # parent 释放；锁由守护子进程继续持有
         print(f"   后台守护已启动 pid={pid}（每 {interval_hours:g}h 自动同步；重启电脑后自动停止，再跑本脚本即恢复）")
         return
     os.setsid()
     os.chdir(REPO_DIR)
     os.umask(0o022)
+    if fd < 3:
+        fd = os.dup2(fd, 3)   # 锁 fd 挪高位：closed-stdio 启动时 os.open 可能返回 0，会被下方 dup2 覆盖导致锁丢失
     with open(LOG_FILE, "a") as f:
         os.dup2(f.fileno(), 0)
         os.dup2(f.fileno(), 1)
         os.dup2(f.fileno(), 2)
-    daemon_loop(interval_hours)
+    daemon_loop(interval_hours, fd)
     os._exit(0)
 
 
 def stop_daemon():
-    if not os.path.exists(PID_FILE):
+    fd = os.open(PID_FILE, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        pass                      # 锁被守护持有 → 有守护
+    else:
+        os.close(fd)              # 抢到锁 → 无守护（残留 pid 文件由下次启动覆盖）
         print("后台守护未在运行")
         return
-    pid = int(open(PID_FILE).read().strip())
-    if _pid_alive(pid):
+    try:
+        pid = int(open(PID_FILE).read().strip())
+    except (ValueError, OSError):
+        pid = 0
+    os.close(fd)
+    if pid <= 0 or not _pid_alive(pid) or "token-stats" not in _pid_cmd(pid):
+        print(f"锁被持有但无法确认守护身份 (pid={pid or '空'})，请手动排查")
+        return
+    try:
         os.kill(pid, signal.SIGTERM)
-        for _ in range(20):
-            if not _pid_alive(pid):
-                break
-            time.sleep(0.25)
-        print("后台守护已停止" if not _pid_alive(pid) else "进程仍在，请手动 kill")
-    else:
-        print("pid 文件陈旧（守护早已退出）")
-    os.remove(PID_FILE)
+    except OSError:
+        pass                      # 并发 stop 已杀：锁随后释放，等锁循环兜底
+    for _ in range(40):           # 等锁释放（守护退出即释放，比等 pid 死亡更可靠）
+        time.sleep(0.25)
+        try:
+            t = os.open(PID_FILE, os.O_RDWR)
+        except FileNotFoundError:
+            print("后台守护已停止")
+            return
+        try:
+            fcntl.flock(t, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            os.close(t)
+            continue
+        try:
+            os.remove(PID_FILE)   # 必须持锁删除：先 close 再 remove 会让新守护抢走锁后
+        except FileNotFoundError:  # 又被 unlink，锁落到孤儿 inode → 后续可双守护
+            pass
+        os.close(t)
+        print("后台守护已停止")
+        return
+    print("进程仍未退出，请手动 kill")
 
 
 if __name__ == "__main__":
