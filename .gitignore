@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# AI agent work environments - never publish
+.omo/
+.codegraph
+.agents/
+.claude/
+.codex/
+.cursor/
+
+# Local scratch & rendered thumbnails
+artifacts/
+*.png
+
+# Playwright MCP scratch
+.playwright-mcp/

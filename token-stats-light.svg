@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="500" viewBox="0 0 900 500" role="img" aria-label="AI token usage">
+  <style>
+    .text { fill: #1f2328; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; }
+    .text2 { fill: #24292f; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; }
+    .muted { fill: #656d76; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; }
+    .faint { fill: #8c959f; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif; }
+    .track { fill: #eaeef2; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+  <defs>
+    <linearGradient id="accg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d97706"/><stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="500" rx="14" fill="#ffffff"/>
+  <rect x="1" y="1" width="898" height="498" rx="13" fill="none" stroke="#d0d7de" stroke-width="1"/>
+<rect x="32" y="24" width="411" height="132" rx="10" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<rect x="32" y="24" width="411" height="2.5" fill="url(#accg)" opacity="0.85"/>
+<text x="48" y="52" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="1">AI TOKEN USAGE</text>
+<text x="48" y="86" font-size="28" font-weight="700" class="text num" text-anchor="start">35.8B</text>
+<text x="138" y="86" font-size="12" font-weight="400" class="muted" text-anchor="start">tokens</text>
+<text x="48" y="108" font-size="11" font-weight="400" class="muted" text-anchor="start">214K+ conversations since Mar 2026</text>
+<text x="48" y="130" font-size="10.5" font-weight="400" class="muted" text-anchor="start">input</text>
+<text x="48" y="145" font-size="11.5" font-weight="600" class="text2 num" text-anchor="start">5.8B</text>
+<text x="168" y="130" font-size="10.5" font-weight="400" class="muted" text-anchor="start">output</text>
+<text x="168" y="145" font-size="11.5" font-weight="600" class="text2 num" text-anchor="start">108.3M</text>
+<text x="288" y="130" font-size="10.5" font-weight="400" class="muted" text-anchor="start">cached</text>
+<text x="288" y="145" font-size="11.5" font-weight="600" class="text2 num" text-anchor="start">83%</text>
+<rect x="457" y="24" width="411" height="132" rx="10" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<rect x="457" y="24" width="411" height="2.5" fill="url(#accg)" opacity="0.85"/>
+<text x="473" y="52" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="1">ESTIMATED COST</text>
+<text x="473" y="86" font-size="28" font-weight="700" class="text num" text-anchor="start">$15.0K</text>
+<text x="473" y="108" font-size="11" font-weight="400" class="muted" text-anchor="start">official pricing, LiteLLM rates</text>
+<text x="473" y="130" font-size="10.5" font-weight="400" class="muted" text-anchor="start">top model</text>
+<text x="473" y="145" font-size="11.5" font-weight="600" class="text2 num" text-anchor="start">GPT-5.6 Sol</text>
+<text x="593" y="130" font-size="10.5" font-weight="400" class="muted" text-anchor="start">peak day</text>
+<text x="593" y="145" font-size="11.5" font-weight="600" class="text2 num" text-anchor="start">3.4B</text>
+<text x="32" y="188" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="1">BY TOOL</text>
+<text x="32" y="218" font-size="12" font-weight="500" class="text2" text-anchor="start">Codex</text>
+<rect x="104" y="208" width="642" height="10" rx="3" class="track"/>
+<rect x="104" y="208" width="410.7" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="868" y="218" font-size="11" font-weight="500" class="muted num" text-anchor="end">22.9B (64%)</text>
+<text x="32" y="244" font-size="12" font-weight="500" class="text2" text-anchor="start">Claude</text>
+<rect x="104" y="234" width="642" height="10" rx="3" class="track"/>
+<rect x="104" y="234" width="142.2" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="868" y="244" font-size="11" font-weight="500" class="muted num" text-anchor="end">7.9B (22%)</text>
+<text x="32" y="270" font-size="12" font-weight="500" class="text2" text-anchor="start">Opencode</text>
+<rect x="104" y="260" width="642" height="10" rx="3" class="track"/>
+<rect x="104" y="260" width="87.6" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="868" y="270" font-size="11" font-weight="500" class="muted num" text-anchor="end">4.9B (14%)</text>
+<text x="32" y="296" font-size="12" font-weight="500" class="text2" text-anchor="start">Workbuddy</text>
+<rect x="104" y="286" width="642" height="10" rx="3" class="track"/>
+<rect x="104" y="286" width="2.0" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="868" y="296" font-size="11" font-weight="500" class="muted num" text-anchor="end">58.0M (0%)</text>
+<text x="32" y="322" font-size="12" font-weight="500" class="text2" text-anchor="start">Zcode</text>
+<rect x="104" y="312" width="642" height="10" rx="3" class="track"/>
+<rect x="104" y="312" width="2.0" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="868" y="322" font-size="11" font-weight="500" class="muted num" text-anchor="end">23.6M (0%)</text>
+<text x="32" y="348" font-size="12" font-weight="500" class="text2" text-anchor="start">Gemini</text>
+<rect x="104" y="338" width="642" height="10" rx="3" class="track"/>
+<rect x="104" y="338" width="2.0" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="868" y="348" font-size="11" font-weight="500" class="muted num" text-anchor="end">6K (0%)</text>
+<text x="32" y="372" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="1">TOP MODELS</text>
+<rect x="32.0" y="383" width="143.6" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="39" y="396" font-size="10.5" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Sol  13.8B</text>
+<rect x="183.6" y="383" width="143.6" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="190.6" y="396" font-size="10.5" font-weight="500" class="text2" text-anchor="start">MiniMax M2.7  6.9B</text>
+<rect x="335.2" y="383" width="143.6" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="342.2" y="396" font-size="10.5" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Luna  6.4B</text>
+<rect x="486.8" y="383" width="179.6" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="493.79999999999995" y="396" font-size="10.5" font-weight="500" class="text2" text-anchor="start">DeepSeek V4 Flash  5.6B</text>
+<rect x="674.4" y="383" width="107.6" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="681.4" y="396" font-size="10.5" font-weight="500" class="text2" text-anchor="start">GPT-5.5  1.3B</text>
+<rect x="32.0" y="415" width="150.8" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="39" y="428" font-size="10.5" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Terra  1.2B</text>
+<rect x="190.8" y="415" width="179.6" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="197.8" y="428" font-size="10.5" font-weight="500" class="text2" text-anchor="start">Claude Opus 4.5  138.3M</text>
+<rect x="378.4" y="415" width="208.4" height="24" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="385.4" y="428" font-size="10.5" font-weight="500" class="text2" text-anchor="start">GPT-5.3 Codex Spark  100.8M</text>
+<line x1="32" y1="456" x2="868" y2="456" stroke="#eaeef2" stroke-width="1"/>
+<text x="32" y="476" font-size="10.5" font-weight="400" class="muted" text-anchor="start">cached 83%</text>
+<text x="868" y="476" font-size="10.5" font-weight="400" class="faint" text-anchor="end">updated 2026-08-14</text>
+</svg>
