@@ -394,9 +394,141 @@ def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _nice_max(v):
+    """向上取整到 0.5B 粒度（4.14B → 4.5B），保底 1B"""
+    step = 0.5e9
+    return max(1e9, math.ceil(v / step) * step)
+
+
+def trend_section(r, PAL, L):
+    """USAGE TREND 区块：最近 30 天日柱 + 7日滚动均线 + 峰值日标注 + 图例
+    + 输入/缓存/输出/写缓存拆分明细行。明细为全时段，图表仅窗口。"""
+    out = []
+    X0, X1 = 32, 868
+    CW = X1 - X0
+    today = datetime.date.today()
+
+    daily = {}
+    for k, v in (r.get("daily") or []):
+        try:
+            daily[datetime.date.fromisoformat(k)] = v
+        except ValueError:
+            pass
+
+    # 窗口收缩：仅最近 30 天（chart 范围；拆分明细行仍为全时段）
+    lo = today - datetime.timedelta(days=29)
+    daily = {d: v for d, v in daily.items() if d >= lo}
+    start = lo
+    span_days = max((today - start).days, 1)
+
+    days_sorted = sorted(daily)
+    # 7日滚动均值：活跃日窗口（当前活跃日 + 前6个活跃日）
+    roll = {}
+    for i, d in enumerate(days_sorted):
+        win = days_sorted[max(0, i - 6): i + 1]
+        roll[d] = sum(daily[x] for x in win) / len(win)
+
+    vmax = _nice_max(max(daily.values()) if daily else 0)
+    plot_top, plot_bot = 528, 628
+    PH = plot_bot - plot_top
+
+    def px(d):
+        return X0 + (d - start).days / span_days * CW
+
+    def py(v):
+        return plot_bot - (v / vmax) * PH
+
+    out.append(f'<line x1="{X0}" y1="496" x2="{X1}" y2="496" stroke="{PAL["track"]}" stroke-width="1"/>')
+    out.append(f'<text x="{X0}" y="514" font-size="11" font-weight="600" class="muted" letter-spacing="2">{L["trend"]}</text>')
+
+    # 图例（右上，与标题同行）：色块=每日用量，线段=7日均值，圆点=峰值日
+    leg_items = [(L["lg_bar"], "bar"), (L["lg_avg"], "line"), (L["lg_peak"], "dot")]
+    lx = X1
+    for lab, kind in reversed(leg_items):
+        lw = len(lab) * 5.9 + 24
+        lx -= lw
+        if kind == "bar":
+            out.append(f'<rect x="{lx}" y="508" width="10" height="10" rx="1" fill="{PAL["acc"]}"/>')
+            tx = lx + 14
+        elif kind == "line":
+            out.append(f'<line x1="{lx}" y1="513" x2="{lx + 18}" y2="513" stroke="{PAL["acc_hi"]}" stroke-width="2" stroke-linecap="round"/>')
+            tx = lx + 22
+        else:
+            out.append(f'<circle cx="{lx + 5}" cy="513" r="5" fill="{PAL["acc_hi"]}" stroke="{PAL["bg"]}" stroke-width="1.2"/>')
+            tx = lx + 14
+        out.append(f'<text x="{tx}" y="514" font-size="10" font-weight="500" class="muted">{lab}</text>')
+        lx -= 12
+
+    # Y 网格线（3 级 faint + 基线）
+    for frac in (0.25, 0.5, 0.75):
+        y = plot_bot - PH * frac
+        out.append(f'<line x1="{X0}" y1="{y:.1f}" x2="{X1}" y2="{y:.1f}" stroke="{PAL["faint"]}" stroke-width="1" opacity="0.35"/>')
+    out.append(f'<line x1="{X0}" y1="{plot_bot}" x2="{X1}" y2="{plot_bot}" stroke="{PAL["track"]}" stroke-width="1"/>')
+
+    # 日柱（纵向渐变，零日跳过留空隙；峰值日 acc_hi 高亮）
+    acc = PAL["acc"]
+    grad_id = "tg" + ("d" if PAL.get("dark") else "l")
+    out.append(f'<defs><linearGradient id="{grad_id}" x1="0" y1="0" x2="0" y2="1">'
+               f'<stop offset="0" stop-color="{acc}" stop-opacity="0.45"/>'
+               f'<stop offset="1" stop-color="{acc}" stop-opacity="0.06"/></linearGradient></defs>')
+    bw = CW / span_days * 0.72
+    pk_day = max(daily, key=daily.get) if daily else None
+    for d in days_sorted:
+        v = daily[d]
+        x = max(px(d) - bw / 2, X0)
+        w = min(bw, X1 - x)
+        y = py(v)
+        fill = PAL["acc_hi"] if d == pk_day else f"url(#{grad_id})"
+        out.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{plot_bot - y:.1f}" rx="1" fill="{fill}"/>')
+
+    # 叠加折线：7日滚动均线（平滑稀疏日尖峰），acc_hi 2px 圆角
+    rpts = " ".join(f"{px(d):.1f},{py(roll[d]):.1f}" for d in days_sorted)
+    out.append(f'<polyline points="{rpts}" fill="none" stroke="{PAL["acc_hi"]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>')
+
+    # 峰值日标注（窗口内重算；圆点 + 日期 + 数值）
+    if pk_day:
+        xp, yp = px(pk_day), py(daily[pk_day])
+        out.append(f'<circle cx="{xp:.1f}" cy="{yp:.1f}" r="4" fill="{PAL["acc_hi"]}" stroke="{PAL["bg"]}" stroke-width="2"/>')
+        lbl = f'{pk_day.month}/{pk_day.day} · {fmt_tokens(daily[pk_day])}'
+        anchor = "end" if xp > X1 - 90 else "start"
+        lx = xp - 8 if anchor == "end" else xp + 8
+        out.append(f'<text x="{lx:.1f}" y="{yp - 9:.1f}" font-size="10" font-weight="600" class="text2" text-anchor="{anchor}">{lbl}</text>')
+
+    # X 周刻度（周一起始，M/D 标签；30 天窗口按周稀疏标（逐日标注会碰撞））
+    wk0 = start - datetime.timedelta(days=start.weekday())
+    last_lx = None
+    dd = wk0
+    while dd <= today:
+        x = px(dd)
+        if x >= X0:
+            out.append(f'<line x1="{x:.1f}" y1="{plot_bot}" x2="{x:.1f}" y2="{plot_bot + 5}" stroke="{PAL["faint"]}" stroke-width="1" opacity="0.5"/>')
+            if x < X1 - 22 and (last_lx is None or x - last_lx >= 34):
+                out.append(f'<text x="{x:.1f}" y="646" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">{dd.month}/{dd.day}</text>')
+                last_lx = x
+        dd += datetime.timedelta(days=7)
+
+    # ccswitch 风格拆分明细行：输入/缓存/输出/写缓存（彩色圆点 + 数值 + 占比）
+    st = r.get("stats", {})
+    parts = [st.get("input", 0), st.get("cached", 0), st.get("output", 0), st.get("cc", 0)]
+    stot = sum(parts)
+    names = [L["c_in"], L["c_cached"], L["c_out"], L["c_cc"]]
+    cell_w = CW / 4
+    yl, yv = 668, 690
+    for i, (v, nm) in enumerate(zip(parts, names)):
+        share = v / stot * 100 if stot else 0
+        x = X0 + cell_w * i + 16
+        out.append(f'<circle cx="{x + 6}" cy="{yl - 5}" r="3.5" fill="{PAL["split"][i]}"/>')
+        out.append(f'<text x="{x + 16}" y="{yl}" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">{nm}</text>')
+        out.append(f'<text x="{x + 16}" y="{yv}" font-size="15" font-weight="700" class="text num">{fmt_tokens(v)}'
+                   f'<tspan font-size="11" font-weight="500" class="muted"> · {share:.1f}%</tspan></text>')
+        if i < 3:
+            out.append(f'<line x1="{X0 + cell_w * (i + 1):.1f}" y1="{yl - 6}" x2="{X0 + cell_w * (i + 1):.1f}" y2="{yv + 4}" stroke="{PAL["track"]}" stroke-width="1"/>')
+    return out
+
+
 def svg_card(r, dark=True, zh=False):
-    """生成 token 卡片 SVG：英雄头部 + 活跃热力图 + 双栏条形图（工具/模型）+ 页脚。"""
-    W, H = 900, 610
+    """生成 token 卡片 SVG：英雄头部 + 活跃热力图 + 双栏条形图（工具/模型）+ 使用趋势 + 页脚。"""
+    W, H = 900, 754
     PAD = 32
     X0, X1 = PAD, W - PAD
     CW = X1 - X0
@@ -420,12 +552,14 @@ def svg_card(r, dark=True, zh=False):
     if dark:
         PAL = dict(bg="#0d1117", card="#161b22", border="#30363d", track="#21262d",
                    text="#e6edf3", text2="#c9d1d9", muted="#8b949e", faint="#57606a",
-                   acc="#f59e0b", acc_hi="#fbbf24")
+                   acc="#f59e0b", acc_hi="#fbbf24", dark=True,
+                   split=["#fbbf24", "#f59e0b", "#fde68a", "#8b949e"])
         HM = ["#21262d", "#4a3a12", "#7d5a17", "#b9821d", "#fbbf24"]   # 琥珀色阶（0-4）
     else:
         PAL = dict(bg="#ffffff", card="#f6f8fa", border="#d0d7de", track="#eaeef2",
                    text="#1f2328", text2="#24292f", muted="#656d76", faint="#8c959f",
-                   acc="#b45309", acc_hi="#d97706")
+                   acc="#b45309", acc_hi="#d97706", dark=False,
+                   split=["#d97706", "#b45309", "#f59e0b", "#8c959f"])
         HM = ["#ebedf0", "#f5e0b0", "#e8c26a", "#d69b2f", "#b45309"]
 
     if zh:
@@ -434,6 +568,8 @@ def svg_card(r, dark=True, zh=False):
                  cost_lbl="估算成本", cost_sub="LiteLLM 官方定价",
                  heatmap="TOKEN 活跃热力图", less="少", more="多", today="今日",
                  by_tool="按工具", top_models="模型榜",
+                 trend="使用趋势", c_in="输入", c_cached="缓存读", c_out="输出", c_cc="缓存写",
+                 lg_bar="每日用量", lg_avg="7日均值", lg_peak="峰值日",
                  foot_stats=f"输入 {fmt_tokens(inp)} · 输出 {fmt_tokens(out)} · 缓存 {cpct:.0f}% · {conv_k:.0f}K 对话",
                  foot_updated="更新于",
                  wd={1: "一", 3: "三", 5: "五"})
@@ -444,6 +580,8 @@ def svg_card(r, dark=True, zh=False):
                  cost_lbl="ESTIMATED COST", cost_sub="official pricing · LiteLLM rates",
                  heatmap="TOKEN ACTIVITY", less="Less", more="More", today="TODAY",
                  by_tool="BY TOOL", top_models="TOP MODELS",
+                 trend="USAGE TREND", c_in="INPUT", c_cached="CACHED", c_out="OUTPUT", c_cc="CACHE WRITE",
+                 lg_bar="Daily", lg_avg="7d avg", lg_peak="Peak",
                  foot_stats=f"input {fmt_tokens(inp)} · output {fmt_tokens(out)} · cached {cpct:.0f}% · {conv_k:.0f}K conversations",
                  foot_updated="updated",
                  wd={1: "Mon", 3: "Wed", 5: "Fri"})
@@ -607,10 +745,13 @@ def svg_card(r, dark=True, zh=False):
         lines.append(f'<rect x="{rtrack_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{PAL["acc"]}" opacity="0.9"/>')
         text(X1, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
 
+    # ===== 使用趋势（最近 30 天窗口：日柱 + 7日均线 + 拆分） =====
+    lines.extend(trend_section(r, PAL, L))
+
     # ===== 页脚 =====
-    lines.append(f'<line x1="{X0}" y1="556" x2="{X1}" y2="556" stroke="{PAL["track"]}" stroke-width="1"/>')
-    text(X0, 584, L["foot_stats"], 10.5, 400, "muted", num=True)
-    text(X1, 584, f'{L["foot_updated"]} {now}', 10.5, 400, "faint", anchor="end")
+    lines.append(f'<line x1="{X0}" y1="706" x2="{X1}" y2="706" stroke="{PAL["track"]}" stroke-width="1"/>')
+    text(X0, 734, L["foot_stats"], 10.5, 400, "muted", num=True)
+    text(X1, 734, f'{L["foot_updated"]} {now}', 10.5, 400, "faint", anchor="end")
 
     return "\n".join(lines) + "\n</svg>\n"
 
