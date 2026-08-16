@@ -38,6 +38,7 @@ import html
 import json
 import math
 import os
+import re
 import signal
 import statistics
 import subprocess
@@ -866,17 +867,53 @@ def _unpushed_commits():
         return 1
 
 
-def git_sync():
-    """提交 SVG 变更并推送。
+README_FILES = ("README.md", "README.zh-CN.md")
+# (属性, 文件名)：README 里引用的 token-stats 图片（GitHub 重写相对路径时保留 query）
+_README_IMGS = (
+    ("srcset", "token-stats-dark.svg"),
+    ("src", "token-stats-light.svg"),
+    ("srcset", "token-stats-zh-dark.svg"),
+    ("src", "token-stats-zh-light.svg"),
+)
 
-    - 工作区有变更 → commit
+
+def _bump_readme_cache_bust(version):
+    """给 README 图片引用追加 `?v=<version>`（幂等：旧 v 会被替换）。
+
+    GitHub 渲染 README 时把相对路径重写为恒定 URL（`/raw/main/...`），各层
+    HTTP 缓存按 URL 命中 → 内容变了 URL 没变就吃到旧缓存。加 query 后每次
+    刷新 URL 都变 → 必 MISS。只在真正提交时调用，配合 git_sync 的跳过语义。
+    """
+    for fname in README_FILES:
+        path = os.path.join(REPO_DIR, fname)
+        try:
+            with open(path) as f:
+                text = f.read()
+        except OSError:
+            print(f"   ⚠️ 读取失败，跳过 {fname}")
+            continue
+        for attr, img in _README_IMGS:
+            text = re.sub(rf'({attr}="{re.escape(img)})(\?v=[^"]*)?(")',
+                          rf"\1?v={version}\3", text)
+        with open(path, "w") as f:
+            f.write(text)
+    print(f"   README 缓存参数已更新 v={version}")
+
+
+def git_sync():
+    """提交 SVG/README 变更并推送。
+
+    - 工作区有变更（SVG 或 README）→ 重写 README 的 ?v= 缓存参数 → commit
     - 存在未推送提交（含上次推送失败遗留）→ push，同周期内退避重试 3 次；
       仍失败则留到下轮周期继续重试（不会因"无数据变化"漏推）。
     """
-    if subprocess.run(["git", "diff", "--quiet", "--", "token-stats*.svg"]).returncode == 0:
+    svg_dirty = subprocess.run(["git", "diff", "--quiet", "--", "token-stats*.svg"]).returncode != 0
+    readme_dirty = subprocess.run(["git", "diff", "--quiet", "--", "README.md", "README.zh-CN.md"]).returncode != 0
+    if not svg_dirty and not readme_dirty:
         print("   无数据变化，跳过提交")
     else:
-        subprocess.run(["git", "add", "token-stats*.svg"], check=True)
+        _bump_readme_cache_bust(int(time.time()))
+        subprocess.run(["git", "add", "token-stats*.svg", "README.md", "README.zh-CN.md"], check=True)
         subprocess.run(["git", "commit", "-m", "chore: refresh token stats"], check=True)
         print("   已提交，推送中…")
     if _unpushed_commits() <= 0:
