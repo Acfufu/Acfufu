@@ -841,16 +841,43 @@ def _lock_daemon():
     return fd
 
 
+def _unpushed_commits():
+    """本地产出、远程还没有的提交数（`HEAD --not --remotes`，离线也准，无需 fetch）。
+
+    推送失败后 commit 已在本地、工作区无 diff——只有数未推送提交才能发现需要重试。
+    异常时按 1 处理（宁多推不少推）。
+    """
+    try:
+        out = subprocess.run(["git", "rev-list", "--count", "HEAD", "--not", "--remotes"],
+                             capture_output=True, text=True, timeout=15)
+        return max(int(out.stdout.strip() or 0), 0)
+    except Exception:
+        return 1
+
+
 def git_sync():
-    """提交 SVG 变更并推送（无变更跳过 commit；推送失败留给下轮重试）"""
+    """提交 SVG 变更并推送。
+
+    - 工作区有变更 → commit
+    - 存在未推送提交（含上次推送失败遗留）→ push，同周期内退避重试 3 次；
+      仍失败则留到下轮周期继续重试（不会因"无数据变化"漏推）。
+    """
     if subprocess.run(["git", "diff", "--quiet", "--", "token-stats*.svg"]).returncode == 0:
         print("   无数据变化，跳过提交")
+    else:
+        subprocess.run(["git", "add", "token-stats*.svg"], check=True)
+        subprocess.run(["git", "commit", "-m", "chore: refresh token stats"], check=True)
+        print("   已提交，推送中…")
+    if _unpushed_commits() <= 0:
         return
-    subprocess.run(["git", "add", "token-stats*.svg"], check=True)
-    subprocess.run(["git", "commit", "-m", "chore: refresh token stats"], check=True)
-    print("   已提交，推送中…")
-    r = subprocess.run(["git", "push", "origin", "HEAD"])
-    print("   推送成功" if r.returncode == 0 else "   推送失败（下轮自动重试）")
+    for attempt in range(1, 4):
+        r = subprocess.run(["git", "push", "origin", "HEAD"])
+        if r.returncode == 0:
+            print("   推送成功")
+            return
+        print(f"   推送失败（第 {attempt} 次），30s 后重试…", flush=True)
+        time.sleep(30)
+    print("   推送失败（已重试 3 次，下轮周期自动重试）")
 
 
 def daemon_loop(interval_hours, lock_fd):
