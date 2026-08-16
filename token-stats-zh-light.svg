@@ -195,7 +195,7 @@
 <rect x="561" y="279" width="8" height="8" rx="1.5" class="h4"/>
 <text x="595" y="287" font-size="10" font-weight="500" class="faint" text-anchor="end">多</text>
 <text x="625" y="206" font-size="9.5" font-weight="600" class="faint" text-anchor="start">今日</text>
-<text x="625" y="224" font-size="13" font-weight="600" class="text2 num" text-anchor="start">985.2M</text>
+<text x="625" y="224" font-size="13" font-weight="600" class="text2 num" text-anchor="start">988.9M</text>
 <text x="32" y="304" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">按工具</text>
 <text x="460" y="304" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">模型榜</text>
 <text x="32" y="328" font-size="12" font-weight="500" class="text2" text-anchor="start">Codex</text>
@@ -204,7 +204,7 @@
 <text x="432" y="328" font-size="11" font-weight="500" class="muted num" text-anchor="end">22.9B (67%)</text>
 <text x="32" y="354" font-size="12" font-weight="500" class="text2" text-anchor="start">Opencode</text>
 <rect x="104" y="344" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="344" width="43.6" height="10" rx="3" fill="#22b8cf" opacity="0.9"/>
+<rect x="104" y="344" width="43.7" height="10" rx="3" fill="#22b8cf" opacity="0.9"/>
 <text x="432" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">6.4B (19%)</text>
 <text x="32" y="380" font-size="12" font-weight="500" class="text2" text-anchor="start">Claude</text>
 <rect x="104" y="370" width="232" height="10" rx="3" class="track"/>
@@ -285,7 +285,7 @@
 <rect x="771.1" y="600.4" width="20.8" height="27.6" rx="1" fill="url(#tgl)"/>
 <rect x="800.0" y="610.1" width="20.8" height="17.9" rx="1" fill="url(#tgl)"/>
 <rect x="828.8" y="616.7" width="20.8" height="11.3" rx="1" fill="url(#tgl)"/>
-<rect x="857.6" y="606.1" width="10.4" height="21.9" rx="1" fill="url(#tgl)"/>
+<rect x="857.6" y="606.0" width="10.4" height="22.0" rx="1" fill="url(#tgl)"/>
 <polyline points="32.0,618.9 60.8,621.7 89.7,622.9 118.5,623.2 147.3,624.2 205.0,624.8 233.8,624.0 262.6,623.3 291.4,622.7 320.3,622.9 377.9,621.1 406.8,607.9 435.6,607.6 464.4,607.3 493.2,603.7 522.1,598.0 550.9,586.3 579.7,587.0 608.6,599.5 637.4,599.4 695.0,599.9 723.9,602.8 752.7,605.4 781.5,613.2 810.3,612.4 839.2,611.4 868.0,608.7" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
 <circle cx="406.8" cy="535.9" r="4" fill="#d97706" stroke="#ffffff" stroke-width="2"/>
 <text x="414.8" y="526.9" font-size="10" font-weight="600" class="text2" text-anchor="start">7/31 · 4.1B</text>
