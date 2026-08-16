@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# noqa: SIZE_OK — 自包含单文件 CLI 脚本（零依赖设计），刻意不分拆
 """
 token-stats.py: 生成 GitHub profile 的 AI token usage SVG 卡片 + 自包含定时同步
 
@@ -33,10 +34,12 @@ token-stats.py: 生成 GitHub profile 的 AI token usage SVG 卡片 + 自包含�
 import argparse
 import datetime
 import fcntl
+import html
 import json
 import math
 import os
 import signal
+import statistics
 import subprocess
 import sys
 import time
@@ -99,7 +102,8 @@ def get_pricing():
         print(f"[warn] 联网拉取定价失败（{e}），用缓存 {PRICING_CACHE}", file=sys.stderr)
     if data is None:
         try:
-            data = json.load(open(PRICING_CACHE))
+            with open(PRICING_CACHE) as f:
+                data = json.load(f)
         except Exception as e:
             print(f"[warn] 定价缓存不可用（{e}），成本按 0 计", file=sys.stderr)
             return {}
@@ -237,9 +241,8 @@ def load_tracker():
 
 
 def _median(a):
-    a = sorted(a)
-    m = len(a) // 2
-    return a[m] if len(a) % 2 else (a[m - 1] + a[m]) / 2
+    # stdlib 等价：排序取中位（奇数取中，偶数取两中位均值）
+    return statistics.median(a)
 
 
 def load_sessions():
@@ -293,6 +296,11 @@ def load_outcomes():
 
 
 # ============ 聚合 ============
+def _agent_disp(name):
+    """agent 源名 → 展示名（opencode 特例，其余 capitalize）"""
+    return "OpenCode" if name == "opencode" else name.capitalize()
+
+
 def aggregate():
     result = {
         "total_tokens": 0, "total_cost": 0.0, "conversations": 0,
@@ -376,7 +384,7 @@ def aggregate():
     # by agent 排序 + 展示名归一
     agents = {}
     for name, tok in result["by_agent"].items():
-        disp = "OpenCode" if name == "opencode" else name.capitalize()
+        disp = _agent_disp(name)
         agents[disp] = agents.get(disp, 0) + tok
     result["by_agent"] = dict(sorted(agents.items(), key=lambda x: -x[1]))
     return result
@@ -391,13 +399,25 @@ def fmt_tokens(n):
 
 
 def esc(s):
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    # stdlib 等价：html.escape(quote=False) 只转义 & < >，引号原样
+    return html.escape(s, quote=False)
 
 
 def _nice_max(v):
     """向上取整到 0.5B 粒度（4.14B → 4.5B），保底 1B"""
     step = 0.5e9
     return max(1e9, math.ceil(v / step) * step)
+
+
+def _parse_daily(r):
+    """r['daily'] [(ISO日期, 数值)] → {date: 数值}；坏日期跳过（外部数据边界）"""
+    daily = {}
+    for k, v in (r.get("daily") or []):
+        try:
+            daily[datetime.date.fromisoformat(k)] = v
+        except ValueError:
+            pass
+    return daily
 
 
 def trend_section(r, PAL, L):
@@ -408,12 +428,7 @@ def trend_section(r, PAL, L):
     CW = X1 - X0
     today = datetime.date.today()
 
-    daily = {}
-    for k, v in (r.get("daily") or []):
-        try:
-            daily[datetime.date.fromisoformat(k)] = v
-        except ValueError:
-            pass
+    daily = _parse_daily(r)
 
     # 窗口收缩：仅最近 30 天（chart 范围；拆分明细行仍为全时段）
     lo = today - datetime.timedelta(days=29)
@@ -573,7 +588,8 @@ def svg_card(r, dark=True, zh=False):
                  foot_stats=f"输入 {fmt_tokens(inp)} · 输出 {fmt_tokens(out)} · 缓存 {cpct:.0f}% · {conv_k:.0f}K 对话",
                  foot_updated="更新于",
                  wd={1: "一", 3: "三", 5: "五"})
-        mon_label = lambda m: f"{m} 月"
+        def mon_label(m):
+            return f"{m} 月"
     else:
         L = dict(aria="AI token usage",
                  hero_lbl="AI TOKEN USAGE", hero_sub=f"{conv_k:.0f}K+ conversations since {start_disp}",
@@ -585,7 +601,8 @@ def svg_card(r, dark=True, zh=False):
                  foot_stats=f"input {fmt_tokens(inp)} · output {fmt_tokens(out)} · cached {cpct:.0f}% · {conv_k:.0f}K conversations",
                  foot_updated="updated",
                  wd={1: "Mon", 3: "Wed", 5: "Fri"})
-        mon_label = lambda m: datetime.date(2024, m, 1).strftime("%b")
+        def mon_label(m):
+            return datetime.date(2024, m, 1).strftime("%b")
 
     if zh:
         F = '-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif'
@@ -626,12 +643,7 @@ def svg_card(r, dark=True, zh=False):
     lines.append(f'<line x1="{X0}" y1="128" x2="{X1}" y2="128" stroke="{PAL["track"]}" stroke-width="1"/>')
     text(X0, 146, L["heatmap"], 11, 600, "muted", spacing="2")
 
-    daily = {}
-    for k, v in (r.get("daily") or []):
-        try:
-            daily[datetime.date.fromisoformat(k)] = v
-        except ValueError:
-            pass
+    daily = _parse_daily(r)
     today_d = datetime.date.today()
     start_d = None
     try:
@@ -727,8 +739,7 @@ def svg_card(r, dark=True, zh=False):
         pct = tok / total * 100 if total else 0
         bw = max(track_w * pct / 100, 2)
         color = AGENT_COLORS.get(name.lower(), "#8b949e")
-        disp = "OpenCode" if name == "opencode" else name.capitalize()
-        text(X0, y0 + 10 + i * 26, disp, 12, 500, "text2")
+        text(X0, y0 + 10 + i * 26, _agent_disp(name), 12, 500, "text2")
         lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{track_w}" height="10" rx="3" class="track"/>')
         lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{color}" opacity="0.9"/>')
         text(X0 + left_w, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
