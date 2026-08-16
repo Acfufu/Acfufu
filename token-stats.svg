@@ -15,9 +15,9 @@
   <rect width="900" height="754" rx="14" fill="#0d1117"/>
   <rect x="1" y="1" width="898" height="752" rx="13" fill="none" stroke="#30363d" stroke-width="1"/>
 <text x="32" y="46" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">AI TOKEN USAGE</text>
-<text x="32" y="92" font-size="42" font-weight="700" class="text num" text-anchor="start">34.0B</text>
+<text x="32" y="92" font-size="42" font-weight="700" class="text num" text-anchor="start">34.4B</text>
 <text x="161" y="88" font-size="13" font-weight="600" class="muted" text-anchor="start">tokens</text>
-<text x="32" y="114" font-size="11.5" font-weight="400" class="muted" text-anchor="start">220K+ conversations since Mar 2026</text>
+<text x="32" y="114" font-size="11.5" font-weight="400" class="muted" text-anchor="start">221K+ conversations since Mar 2026</text>
 <text x="868" y="46" font-size="11" font-weight="600" class="muted" text-anchor="end" letter-spacing="2">ESTIMATED COST</text>
 <text x="868" y="88" font-size="30" font-weight="700" class="text num" text-anchor="end">$14.4K</text>
 <text x="868" y="114" font-size="11.5" font-weight="400" class="muted" text-anchor="end">official pricing · LiteLLM rates</text>
@@ -195,21 +195,21 @@
 <rect x="561" y="279" width="8" height="8" rx="1.5" class="h4"/>
 <text x="595" y="287" font-size="10" font-weight="500" class="faint" text-anchor="end">More</text>
 <text x="625" y="206" font-size="9.5" font-weight="600" class="faint" text-anchor="start" letter-spacing="2">TODAY</text>
-<text x="625" y="224" font-size="13" font-weight="600" class="text2 num" text-anchor="start">990.2M</text>
+<text x="625" y="224" font-size="13" font-weight="600" class="text2 num" text-anchor="start">1.4B</text>
 <text x="32" y="304" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">BY TOOL</text>
 <text x="460" y="304" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">TOP MODELS</text>
 <text x="32" y="328" font-size="12" font-weight="500" class="text2" text-anchor="start">Codex</text>
 <rect x="104" y="318" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="318" width="156.2" height="10" rx="3" fill="#6c63ff" opacity="0.9"/>
+<rect x="104" y="318" width="154.4" height="10" rx="3" fill="#6c63ff" opacity="0.9"/>
 <text x="432" y="328" font-size="11" font-weight="500" class="muted num" text-anchor="end">22.9B (67%)</text>
 <text x="32" y="354" font-size="12" font-weight="500" class="text2" text-anchor="start">Opencode</text>
 <rect x="104" y="344" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="344" width="43.7" height="10" rx="3" fill="#22b8cf" opacity="0.9"/>
-<text x="432" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">6.4B (19%)</text>
+<rect x="104" y="344" width="45.9" height="10" rx="3" fill="#22b8cf" opacity="0.9"/>
+<text x="432" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">6.8B (20%)</text>
 <text x="32" y="380" font-size="12" font-weight="500" class="text2" text-anchor="start">Claude</text>
 <rect x="104" y="370" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="370" width="31.6" height="10" rx="3" fill="#51cf66" opacity="0.9"/>
-<text x="432" y="380" font-size="11" font-weight="500" class="muted num" text-anchor="end">4.6B (14%)</text>
+<rect x="104" y="370" width="31.2" height="10" rx="3" fill="#51cf66" opacity="0.9"/>
+<text x="432" y="380" font-size="11" font-weight="500" class="muted num" text-anchor="end">4.6B (13%)</text>
 <text x="32" y="406" font-size="12" font-weight="500" class="text2" text-anchor="start">Workbuddy</text>
 <rect x="104" y="396" width="232" height="10" rx="3" class="track"/>
 <rect x="104" y="396" width="2.0" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
@@ -224,27 +224,27 @@
 <text x="432" y="458" font-size="11" font-weight="500" class="muted num" text-anchor="end">6K (0%)</text>
 <text x="460" y="328" font-size="12" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Sol</text>
 <rect x="586" y="318" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="318" width="80.5" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
-<text x="868" y="328" font-size="11" font-weight="500" class="muted num" text-anchor="end">13.8B (41%)</text>
+<rect x="586" y="318" width="79.5" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<text x="868" y="328" font-size="11" font-weight="500" class="muted num" text-anchor="end">13.8B (40%)</text>
 <text x="460" y="354" font-size="12" font-weight="500" class="text2" text-anchor="start">DeepSeek V4 Flash</text>
 <rect x="586" y="344" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="344" width="41.6" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
-<text x="868" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">7.1B (21%)</text>
+<rect x="586" y="344" width="43.4" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<text x="868" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">7.5B (22%)</text>
 <text x="460" y="380" font-size="12" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Luna</text>
 <rect x="586" y="370" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="370" width="37.3" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="370" width="36.8" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="380" font-size="11" font-weight="500" class="muted num" text-anchor="end">6.4B (19%)</text>
 <text x="460" y="406" font-size="12" font-weight="500" class="text2" text-anchor="start">MiniMax M2.7</text>
 <rect x="586" y="396" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="396" width="21.1" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="396" width="20.8" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="406" font-size="11" font-weight="500" class="muted num" text-anchor="end">3.6B (11%)</text>
 <text x="460" y="432" font-size="12" font-weight="500" class="text2" text-anchor="start">GPT-5.5</text>
 <rect x="586" y="422" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="422" width="7.6" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="422" width="7.5" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="432" font-size="11" font-weight="500" class="muted num" text-anchor="end">1.3B (4%)</text>
 <text x="460" y="458" font-size="12" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Terra</text>
 <rect x="586" y="448" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="448" width="6.7" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="448" width="6.6" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="458" font-size="11" font-weight="500" class="muted num" text-anchor="end">1.2B (3%)</text>
 <line x1="32" y1="496" x2="868" y2="496" stroke="#21262d" stroke-width="1"/>
 <text x="32" y="514" font-size="11" font-weight="600" class="muted" letter-spacing="2">USAGE TREND</text>
@@ -285,8 +285,8 @@
 <rect x="771.1" y="600.4" width="20.8" height="27.6" rx="1" fill="url(#tgd)"/>
 <rect x="800.0" y="610.1" width="20.8" height="17.9" rx="1" fill="url(#tgd)"/>
 <rect x="828.8" y="616.7" width="20.8" height="11.3" rx="1" fill="url(#tgd)"/>
-<rect x="857.6" y="606.0" width="10.4" height="22.0" rx="1" fill="url(#tgd)"/>
-<polyline points="32.0,618.9 60.8,621.7 89.7,622.9 118.5,623.2 147.3,624.2 205.0,624.8 233.8,624.0 262.6,623.3 291.4,622.7 320.3,622.9 377.9,621.1 406.8,607.9 435.6,607.6 464.4,607.3 493.2,603.7 522.1,598.0 550.9,586.3 579.7,587.0 608.6,599.5 637.4,599.4 695.0,599.9 723.9,602.8 752.7,605.4 781.5,613.2 810.3,612.4 839.2,611.4 868.0,608.7" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+<rect x="857.6" y="597.1" width="10.4" height="30.9" rx="1" fill="url(#tgd)"/>
+<polyline points="32.0,618.9 60.8,621.7 89.7,622.9 118.5,623.2 147.3,624.2 205.0,624.8 233.8,624.0 262.6,623.3 291.4,622.7 320.3,622.9 377.9,621.1 406.8,607.9 435.6,607.6 464.4,607.3 493.2,603.7 522.1,598.0 550.9,586.3 579.7,587.0 608.6,599.5 637.4,599.4 695.0,599.9 723.9,602.8 752.7,605.4 781.5,613.2 810.3,612.4 839.2,611.4 868.0,607.4" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
 <circle cx="406.8" cy="535.9" r="4" fill="#fbbf24" stroke="#0d1117" stroke-width="2"/>
 <text x="414.8" y="526.9" font-size="10" font-weight="600" class="text2" text-anchor="start">7/31 · 4.1B</text>
 <line x1="89.7" y1="628" x2="89.7" y2="633" stroke="#57606a" stroke-width="1" opacity="0.5"/>
@@ -299,20 +299,20 @@
 <text x="695.0" y="646" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">8/10</text>
 <circle cx="54.0" cy="663" r="3.5" fill="#fbbf24"/>
 <text x="64.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">INPUT</text>
-<text x="64.0" y="690" font-size="15" font-weight="700" class="text num">3.6B<tspan font-size="11" font-weight="500" class="muted"> · 10.7%</tspan></text>
+<text x="64.0" y="690" font-size="15" font-weight="700" class="text num">3.6B<tspan font-size="11" font-weight="500" class="muted"> · 10.6%</tspan></text>
 <line x1="241.0" y1="662" x2="241.0" y2="694" stroke="#21262d" stroke-width="1"/>
 <circle cx="263.0" cy="663" r="3.5" fill="#f59e0b"/>
 <text x="273.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">CACHED</text>
-<text x="273.0" y="690" font-size="15" font-weight="700" class="text num">30.1B<tspan font-size="11" font-weight="500" class="muted"> · 88.5%</tspan></text>
+<text x="273.0" y="690" font-size="15" font-weight="700" class="text num">30.5B<tspan font-size="11" font-weight="500" class="muted"> · 88.7%</tspan></text>
 <line x1="450.0" y1="662" x2="450.0" y2="694" stroke="#21262d" stroke-width="1"/>
 <circle cx="472.0" cy="663" r="3.5" fill="#fde68a"/>
 <text x="482.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">OUTPUT</text>
-<text x="482.0" y="690" font-size="15" font-weight="700" class="text num">102.8M<tspan font-size="11" font-weight="500" class="muted"> · 0.3%</tspan></text>
+<text x="482.0" y="690" font-size="15" font-weight="700" class="text num">103.1M<tspan font-size="11" font-weight="500" class="muted"> · 0.3%</tspan></text>
 <line x1="659.0" y1="662" x2="659.0" y2="694" stroke="#21262d" stroke-width="1"/>
 <circle cx="681.0" cy="663" r="3.5" fill="#8b949e"/>
 <text x="691.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">CACHE WRITE</text>
-<text x="691.0" y="690" font-size="15" font-weight="700" class="text num">154.6M<tspan font-size="11" font-weight="500" class="muted"> · 0.5%</tspan></text>
+<text x="691.0" y="690" font-size="15" font-weight="700" class="text num">154.6M<tspan font-size="11" font-weight="500" class="muted"> · 0.4%</tspan></text>
 <line x1="32" y1="706" x2="868" y2="706" stroke="#21262d" stroke-width="1"/>
-<text x="32" y="734" font-size="10.5" font-weight="400" class="muted num" text-anchor="start">input 3.6B · output 102.8M · cached 89% · 220K conversations</text>
+<text x="32" y="734" font-size="10.5" font-weight="400" class="muted num" text-anchor="start">input 3.6B · output 103.1M · cached 89% · 221K conversations</text>
 <text x="868" y="734" font-size="10.5" font-weight="400" class="faint" text-anchor="end">updated 2026-08-16</text>
 </svg>
