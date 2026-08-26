@@ -23,8 +23,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1787692822" />
-    <img alt="AI token usage" src="token-stats-light.svg?v=1787692822" width="900" />
+    <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1787736027" />
+    <img alt="AI token usage" src="token-stats-light.svg?v=1787736027" width="900" />
   </picture>
 </p>
 
