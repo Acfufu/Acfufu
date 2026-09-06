@@ -1,38 +1,17 @@
-<p align="center">
-  <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg">
+  <img src="assets/profile-dark.svg" width="100%" alt="acfufu：AI-native 开发工具、像素宠物、吃 commit 的蛇和留言墙。">
+</picture>
 
-<h1 align="center">Acfufu</h1>
+`→ repos ` [dsh-desktop](https://github.com/Acfufu/dsh-desktop) · [radar](https://github.com/Acfufu/radar) · [readme-showcase](https://github.com/Acfufu/readme-showcase) · [reach-guard](https://github.com/Acfufu/reach-guard) · [TokenTracker](https://github.com/Acfufu/TokenTracker)<br>
+`→ reach ` [farrell-z.github.io](https://farrell-z.github.io) · [github.com/Acfufu](https://github.com/Acfufu)<br>
+`→ wall  ` [留一句](https://github.com/Acfufu/Acfufu/issues/new?title=wall%7Cyour+message+here&body=1.+Replace+%60your+message+here%60+in+the+title+with+your+message+%28keep+the+%60wall%7C%60+prefix%29.%0A2.+Submit+-+it+appears+on+the+wall+within+a+couple+of+minutes+and+the+issue+will+be+closed+automatically.) · 几分钟后就会出现在上面的留言墙上
 
-<p align="center">
-  构建 <b>AI-native</b> 开发者工具。我写代码，也写会写代码的 agent。
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-zh-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="token-stats-zh-light.svg">
+  <img src="token-stats-zh-dark.svg" width="100%" alt="AI Token 用量">
+</picture>
 
-<p align="center">
-  <img alt="AI-Native" src="https://img.shields.io/badge/AI--Native-24292f?style=flat-square" />
-  <img alt="Agentic Dev" src="https://img.shields.io/badge/Agentic%20Dev-24292f?style=flat-square" />
-  <img alt="Token Tracker" src="https://img.shields.io/badge/Token%20Tracker-24292f?style=flat-square" />
-  <img alt="Rust" src="https://img.shields.io/badge/Rust-24292f?style=flat-square" />
-  <img alt="Python" src="https://img.shields.io/badge/Python-24292f?style=flat-square" />
-  <img alt="Swift" src="https://img.shields.io/badge/Swift-24292f?style=flat-square" />
-</p>
-
----
-
-## AI Token 用量
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="token-stats-zh-dark.svg?v=1788137226" />
-    <img alt="AI Token 用量" src="token-stats-zh-light.svg?v=1788137226" width="900" />
-  </picture>
-</p>
-
----
-
-
-
-<p align="center">
-  <a href="https://github.com/Acfufu">github.com/Acfufu</a><br />
-  <a href="https://farrell-z.github.io">Farrell-Z.github.io</a>
-</p>
+<!--WALL:START--><!--WALL:END-->

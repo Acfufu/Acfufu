@@ -24,3 +24,9 @@ artifacts/
 
 # Token stats daemon runtime state
 .token-stats-daemon.*
+
+# Local agent scratch
+.mimosa/
+.preview/
+.v2c/
+.lazyzcode/

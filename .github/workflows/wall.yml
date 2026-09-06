@@ -1,0 +1,132 @@
+name: wall
+
+on:
+  issues:
+    types: [opened]
+
+concurrency:
+  group: wall
+  cancel-in-progress: false
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  wall:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse wall message from title
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.issue.title;
+            const m = title.match(/^\s*wall\s*[|：:]\s*(.*)$/i);
+            if (!m) {
+              core.setOutput('skip', 'true');
+              core.setOutput('message', '');
+              return;
+            }
+            const msg = m[1]
+              .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u2028\u2029\ufeff]/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            let out = '', w = 0;
+            for (const ch of msg) {
+              const cw = ch.codePointAt(0) > 0x2e80 ? 2 : 1;
+              if (w + cw > 40) break;
+              out += ch;
+              w += cw;
+            }
+            const date = new Date(context.payload.issue.created_at)
+              .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+            core.setOutput('skip', 'false');
+            core.setOutput('message', out);
+            core.setOutput('user', context.payload.issue.user.login);
+            core.setOutput('date', date);
+
+      - name: Skip non-wall issue
+        if: steps.parse.outputs.skip == 'true'
+        run: echo "not a wall issue, nothing to do"
+
+      - name: Close empty-message issue
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message == ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'empty message - put your text after `wall|` in the title'
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
+
+      - name: Checkout
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        run: pip install pillow
+
+      - name: Append message and regenerate card
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        env:
+          WALL_MSG: ${{ steps.parse.outputs.message }}
+          WALL_USER: ${{ steps.parse.outputs.user }}
+          WALL_DATE: ${{ steps.parse.outputs.date }}
+          STRICT_CONTRIB: '1'
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          path = "data/wall.json"
+          entries = json.loads(open(path).read())
+          entries.append({
+              "user": os.environ["WALL_USER"],
+              "msg": os.environ["WALL_MSG"],
+              "date": os.environ["WALL_DATE"],
+          })
+          entries = entries[-50:]  # keep the recent wall, render shows the last 2
+          open(path, "w").write(json.dumps(entries, ensure_ascii=False, indent=2) + "\n")
+          EOF
+          python3 scripts/gen_acfufu_card.py
+
+      - name: Commit and push
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        run: |
+          git config user.name "acfufu-wall-bot"
+          git config user.email "actions@github.com"
+          git add assets/profile-dark.svg assets/profile-light.svg data/wall.json
+          git commit -m "wall: message from @${{ steps.parse.outputs.user }}"
+          git push
+
+      - name: Close wall issue
+        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'on the wall :white_check_mark:'
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
