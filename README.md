@@ -9,7 +9,7 @@
 `→ wall  ` [leave a message](https://github.com/Acfufu/Acfufu/issues/new?title=wall%7Cyour+message+here&body=1.+Replace+%60your+message+here%60+in+the+title+with+your+message+%28keep+the+%60wall%7C%60+prefix%29.%0A2.+Submit+-+it+appears+on+the+wall+within+a+couple+of+minutes+and+the+issue+will+be+closed+automatically.) · it appears on the wall above within a couple of minutes
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1789654329">
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1789697536">
   <source media="(prefers-color-scheme: light)" srcset="token-stats-light.svg">
   <img src="token-stats-dark.svg" width="100%" alt="ai token usage">
 </picture>
