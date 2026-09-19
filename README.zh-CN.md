@@ -9,7 +9,7 @@
 `→ wall  ` [留一句](https://github.com/Acfufu/Acfufu/issues/new?title=wall%7Cyour+message+here&body=1.+Replace+%60your+message+here%60+in+the+title+with+your+message+%28keep+the+%60wall%7C%60+prefix%29.%0A2.+Submit+-+it+appears+on+the+wall+within+a+couple+of+minutes+and+the+issue+will+be+closed+automatically.) · 几分钟后就会出现在上面的留言墙上
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="token-stats-zh-dark.svg?v=1789740743">
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-zh-dark.svg?v=1789783951">
   <source media="(prefers-color-scheme: light)" srcset="token-stats-zh-light.svg">
   <img src="token-stats-zh-dark.svg" width="100%" alt="AI Token 用量">
 </picture>
