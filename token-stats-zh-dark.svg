@@ -15,9 +15,9 @@
   <rect width="900" height="754" rx="14" fill="#0d1117"/>
   <rect x="1" y="1" width="898" height="752" rx="13" fill="none" stroke="#30363d" stroke-width="1"/>
 <text x="32" y="46" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">AI TOKEN 使用量</text>
-<text x="32" y="92" font-size="42" font-weight="700" class="text num" text-anchor="start">56.1B</text>
+<text x="32" y="92" font-size="42" font-weight="700" class="text num" text-anchor="start">56.3B</text>
 <text x="161" y="88" font-size="13" font-weight="600" class="muted" text-anchor="start">tokens</text>
-<text x="32" y="114" font-size="11.5" font-weight="400" class="muted" text-anchor="start">358K+ 对话 · 自 2026 年 3 月 起</text>
+<text x="32" y="114" font-size="11.5" font-weight="400" class="muted" text-anchor="start">359K+ 对话 · 自 2026 年 3 月 起</text>
 <text x="868" y="46" font-size="11" font-weight="600" class="muted" text-anchor="end" letter-spacing="2">估算成本</text>
 <text x="868" y="88" font-size="30" font-weight="700" class="text num" text-anchor="end">$13.0K</text>
 <text x="868" y="114" font-size="11.5" font-weight="400" class="muted" text-anchor="end">LiteLLM 官方定价</text>
@@ -231,24 +231,24 @@
 <rect x="594" y="279" width="8" height="8" rx="1.5" class="h4"/>
 <text x="628" y="287" font-size="10" font-weight="500" class="faint" text-anchor="end">多</text>
 <text x="658" y="206" font-size="9.5" font-weight="600" class="faint" text-anchor="start">今日</text>
-<text x="658" y="224" font-size="13" font-weight="600" class="text2 num" text-anchor="start">1.1B</text>
+<text x="658" y="224" font-size="13" font-weight="600" class="text2 num" text-anchor="start">1.3B</text>
 <text x="32" y="304" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">按工具</text>
 <text x="460" y="304" font-size="11" font-weight="600" class="muted" text-anchor="start" letter-spacing="2">模型榜</text>
 <text x="32" y="328" font-size="12" font-weight="500" class="text2" text-anchor="start">Codex</text>
 <rect x="104" y="318" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="318" width="114.1" height="10" rx="3" fill="#6c63ff" opacity="0.9"/>
+<rect x="104" y="318" width="113.6" height="10" rx="3" fill="#6c63ff" opacity="0.9"/>
 <text x="432" y="328" font-size="11" font-weight="500" class="muted num" text-anchor="end">27.6B (49%)</text>
 <text x="32" y="354" font-size="12" font-weight="500" class="text2" text-anchor="start">Zcode</text>
 <rect x="104" y="344" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="344" width="62.6" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
-<text x="432" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">15.1B (27%)</text>
+<rect x="104" y="344" width="63.4" height="10" rx="3" fill="#8b949e" opacity="0.9"/>
+<text x="432" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">15.4B (27%)</text>
 <text x="32" y="380" font-size="12" font-weight="500" class="text2" text-anchor="start">Opencode</text>
 <rect x="104" y="370" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="370" width="35.6" height="10" rx="3" fill="#22b8cf" opacity="0.9"/>
+<rect x="104" y="370" width="35.5" height="10" rx="3" fill="#22b8cf" opacity="0.9"/>
 <text x="432" y="380" font-size="11" font-weight="500" class="muted num" text-anchor="end">8.6B (15%)</text>
 <text x="32" y="406" font-size="12" font-weight="500" class="text2" text-anchor="start">Claude</text>
 <rect x="104" y="396" width="232" height="10" rx="3" class="track"/>
-<rect x="104" y="396" width="19.2" height="10" rx="3" fill="#51cf66" opacity="0.9"/>
+<rect x="104" y="396" width="19.1" height="10" rx="3" fill="#51cf66" opacity="0.9"/>
 <text x="432" y="406" font-size="11" font-weight="500" class="muted num" text-anchor="end">4.6B (8%)</text>
 <text x="32" y="432" font-size="12" font-weight="500" class="text2" text-anchor="start">Workbuddy</text>
 <rect x="104" y="422" width="232" height="10" rx="3" class="track"/>
@@ -276,27 +276,27 @@
 <text x="432" y="562" font-size="11" font-weight="500" class="muted num" text-anchor="end">226 (0%)</text>
 <text x="460" y="328" font-size="12" font-weight="500" class="text2" text-anchor="start">GLM-5.3-Flash</text>
 <rect x="586" y="318" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="318" width="49.0" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="318" width="48.7" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="328" font-size="11" font-weight="500" class="muted num" text-anchor="end">13.9B (25%)</text>
 <text x="460" y="354" font-size="12" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Sol</text>
 <rect x="586" y="344" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="344" width="48.9" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="344" width="48.6" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="354" font-size="11" font-weight="500" class="muted num" text-anchor="end">13.8B (25%)</text>
 <text x="460" y="380" font-size="12" font-weight="500" class="text2" text-anchor="start">DeepSeek V4 Flash</text>
 <rect x="586" y="370" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="370" width="28.3" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="370" width="28.1" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="380" font-size="11" font-weight="500" class="muted num" text-anchor="end">8.0B (14%)</text>
 <text x="460" y="406" font-size="12" font-weight="500" class="text2" text-anchor="start">GPT-5.6 Luna</text>
 <rect x="586" y="396" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="396" width="22.9" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="396" width="22.8" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="406" font-size="11" font-weight="500" class="muted num" text-anchor="end">6.5B (12%)</text>
 <text x="460" y="432" font-size="12" font-weight="500" class="text2" text-anchor="start">unknown</text>
 <rect x="586" y="422" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="422" width="16.2" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="422" width="16.1" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="432" font-size="11" font-weight="500" class="muted num" text-anchor="end">4.6B (8%)</text>
 <text x="460" y="458" font-size="12" font-weight="500" class="text2" text-anchor="start">MiniMax M2.7</text>
 <rect x="586" y="448" width="198" height="10" rx="3" class="track"/>
-<rect x="586" y="448" width="13.0" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
+<rect x="586" y="448" width="12.9" height="10" rx="3" fill="#f59e0b" opacity="0.9"/>
 <text x="868" y="458" font-size="11" font-weight="500" class="muted num" text-anchor="end">3.7B (7%)</text>
 <line x1="32" y1="496" x2="868" y2="496" stroke="#21262d" stroke-width="1"/>
 <text x="32" y="514" font-size="11" font-weight="600" class="muted" letter-spacing="2">使用趋势</text>
@@ -338,8 +338,8 @@
 <rect x="771.1" y="531.8" width="20.8" height="96.2" rx="1" fill="#fbbf24"/>
 <rect x="800.0" y="553.4" width="20.8" height="74.6" rx="1" fill="url(#tgd)"/>
 <rect x="828.8" y="580.4" width="20.8" height="47.6" rx="1" fill="url(#tgd)"/>
-<rect x="857.6" y="557.9" width="10.4" height="70.1" rx="1" fill="url(#tgd)"/>
-<polyline points="60.8,626.6 89.7,627.0 118.5,617.5 147.3,619.6 176.1,621.2 205.0,620.6 233.8,621.3 262.6,620.6 291.4,620.6 320.3,623.5 349.1,623.8 406.8,620.5 435.6,614.8 464.4,608.2 493.2,603.1 522.1,593.4 550.9,587.8 579.7,581.9 608.6,581.0 637.4,576.7 666.2,571.5 695.0,566.9 723.9,566.4 752.7,562.3 781.5,554.6 810.3,548.1 839.2,552.7 868.0,554.9" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+<rect x="857.6" y="540.2" width="10.4" height="87.8" rx="1" fill="url(#tgd)"/>
+<polyline points="60.8,626.6 89.7,627.0 118.5,617.5 147.3,619.6 176.1,621.2 205.0,620.6 233.8,621.3 262.6,620.6 291.4,620.6 320.3,623.5 349.1,623.8 406.8,620.5 435.6,614.8 464.4,608.2 493.2,603.1 522.1,593.4 550.9,587.8 579.7,581.9 608.6,581.0 637.4,576.7 666.2,571.5 695.0,566.9 723.9,566.4 752.7,562.3 781.5,554.6 810.3,548.1 839.2,552.7 868.0,552.3" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
 <circle cx="781.5" cy="531.8" r="4" fill="#fbbf24" stroke="#0d1117" stroke-width="2"/>
 <text x="773.5" y="522.8" font-size="10" font-weight="600" class="text2" text-anchor="end">9/17 · 1.4B</text>
 <line x1="89.7" y1="628" x2="89.7" y2="633" stroke="#57606a" stroke-width="1" opacity="0.5"/>
@@ -356,16 +356,16 @@
 <line x1="241.0" y1="662" x2="241.0" y2="694" stroke="#21262d" stroke-width="1"/>
 <circle cx="263.0" cy="663" r="3.5" fill="#f59e0b"/>
 <text x="273.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">缓存读</text>
-<text x="273.0" y="690" font-size="15" font-weight="700" class="text num">51.4B<tspan font-size="11" font-weight="500" class="muted"> · 91.7%</tspan></text>
+<text x="273.0" y="690" font-size="15" font-weight="700" class="text num">51.6B<tspan font-size="11" font-weight="500" class="muted"> · 91.7%</tspan></text>
 <line x1="450.0" y1="662" x2="450.0" y2="694" stroke="#21262d" stroke-width="1"/>
 <circle cx="472.0" cy="663" r="3.5" fill="#fde68a"/>
 <text x="482.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">输出</text>
-<text x="482.0" y="690" font-size="15" font-weight="700" class="text num">191.3M<tspan font-size="11" font-weight="500" class="muted"> · 0.3%</tspan></text>
+<text x="482.0" y="690" font-size="15" font-weight="700" class="text num">191.8M<tspan font-size="11" font-weight="500" class="muted"> · 0.3%</tspan></text>
 <line x1="659.0" y1="662" x2="659.0" y2="694" stroke="#21262d" stroke-width="1"/>
 <circle cx="681.0" cy="663" r="3.5" fill="#8b949e"/>
 <text x="691.0" y="668" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">缓存写</text>
 <text x="691.0" y="690" font-size="15" font-weight="700" class="text num">155.9M<tspan font-size="11" font-weight="500" class="muted"> · 0.3%</tspan></text>
 <line x1="32" y1="706" x2="868" y2="706" stroke="#21262d" stroke-width="1"/>
-<text x="32" y="734" font-size="10.5" font-weight="400" class="muted num" text-anchor="start">输入 4.3B · 输出 191.3M · 缓存 92% · 358K 对话</text>
+<text x="32" y="734" font-size="10.5" font-weight="400" class="muted num" text-anchor="start">输入 4.3B · 输出 191.8M · 缓存 92% · 359K 对话</text>
 <text x="868" y="734" font-size="10.5" font-weight="400" class="faint" text-anchor="end">更新于 2026-09-20</text>
 </svg>
