@@ -296,7 +296,7 @@ class TestSvg(unittest.TestCase):
         dark = token_stats.svg_card(self._today_window(), dark=True)
         light = token_stats.svg_card(self._today_window(), dark=False)
         self.assertNotEqual(dark, light)
-        self.assertIn("#0d1117", dark)
+        self.assertIn("#0a0e14", dark)   # 终端卡卡体（与画像卡同族）
         self.assertIn("#ffffff", light)
 
     def test_trend_section_contains_bars_avg_line_and_peak(self):
@@ -305,7 +305,8 @@ class TestSvg(unittest.TestCase):
                                             "acc_hi": "#000", "bg": "#000", "split": ["#a"] * 4,
                                             "dark": True},
                                         {"trend": "T", "lg_bar": "b", "lg_avg": "a", "lg_peak": "p",
-                                         "c_in": "i", "c_cached": "c", "c_out": "o", "c_cc": "w"})
+                                         "c_in": "i", "c_cached": "c", "c_out": "o", "c_cc": "w"},
+                                        32, 868)
         joined = "\n".join(out)
         self.assertIn("<polyline", joined)
         self.assertIn("<rect", joined)

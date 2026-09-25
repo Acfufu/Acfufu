@@ -90,6 +90,25 @@ AGENT_COLORS = {
     "gemini": "#4285F4", "other": "#8b949e",
 }
 
+# 终端卡视觉语言（与 scripts/gen_acfufu_card.py 同族）：等宽字体 + Plex 子集内嵌。
+# gen-cache 里的 plex b64 是按画像卡字符集裁的子集；缺字符走系统回退，不报错。
+MONO = ("'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC',"
+        "'Hiragino Sans GB','Microsoft YaHei',monospace")
+
+
+def _font_face_css():
+    parts = []
+    for weight, name in (("normal", "reg"), ("bold", "bold")):
+        p = os.path.join(REPO_DIR, "assets", "gen-cache", f"plex-{name}.b64")
+        try:
+            with open(p) as f:
+                b64 = f.read().strip()
+        except OSError:
+            continue
+        parts.append(f"@font-face{{font-family:'Plex';font-style:normal;font-weight:{weight};"
+                     f"src:url(data:font/truetype;base64,{b64}) format('truetype');}}")
+    return "".join(parts)
+
 
 # ============ 定价 ============
 def get_pricing():
@@ -421,11 +440,12 @@ def _parse_daily(r):
     return daily
 
 
-def trend_section(r, PAL, L):
+def trend_section(r, PAL, L, x0, x1, yo=0):
     """USAGE TREND 区块：最近 30 天日柱 + 7日滚动均线 + 峰值日标注 + 图例
-    + 输入/缓存/输出/写缓存拆分明细行。明细为全时段，图表仅窗口。"""
+    + 输入/缓存/输出/写缓存拆分明细行。明细为全时段，图表仅窗口。
+    x0/x1 为绘图横轴；yo 为终端卡 titlebar 引入的纵向偏移。"""
     out = []
-    X0, X1 = 32, 868
+    X0, X1 = x0, x1
     CW = X1 - X0
     today = datetime.date.today()
 
@@ -445,7 +465,7 @@ def trend_section(r, PAL, L):
         roll[d] = sum(daily[x] for x in win) / len(win)
 
     vmax = _nice_max(max(daily.values()) if daily else 0)
-    plot_top, plot_bot = 528, 628
+    plot_top, plot_bot = 528 + yo, 628 + yo
     PH = plot_bot - plot_top
 
     def px(d):
@@ -454,25 +474,25 @@ def trend_section(r, PAL, L):
     def py(v):
         return plot_bot - (v / vmax) * PH
 
-    out.append(f'<line x1="{X0}" y1="496" x2="{X1}" y2="496" stroke="{PAL["track"]}" stroke-width="1"/>')
-    out.append(f'<text x="{X0}" y="514" font-size="11" font-weight="600" class="muted" letter-spacing="2">{L["trend"]}</text>')
+    out.append(f'<line x1="{X0}" y1="{496 + yo}" x2="{X1}" y2="{496 + yo}" stroke="{PAL["track"]}" stroke-width="1"/>')
+    out.append(f'<text x="{X0}" y="{514 + yo}" font-size="11" font-weight="600" class="muted" letter-spacing="2">{L["trend"]}</text>')
 
     # 图例（右上，与标题同行）：色块=每日用量，线段=7日均值，圆点=峰值日
     leg_items = [(L["lg_bar"], "bar"), (L["lg_avg"], "line"), (L["lg_peak"], "dot")]
     lx = X1
     for lab, kind in reversed(leg_items):
-        lw = len(lab) * 5.9 + 24
+        lw = len(lab) * 6.3 + 24
         lx -= lw
         if kind == "bar":
-            out.append(f'<rect x="{lx}" y="508" width="10" height="10" rx="1" fill="{PAL["acc"]}"/>')
+            out.append(f'<rect x="{lx}" y="{508 + yo}" width="10" height="10" rx="1" fill="{PAL["acc"]}"/>')
             tx = lx + 14
         elif kind == "line":
-            out.append(f'<line x1="{lx}" y1="513" x2="{lx + 18}" y2="513" stroke="{PAL["acc_hi"]}" stroke-width="2" stroke-linecap="round"/>')
+            out.append(f'<line x1="{lx}" y1="{513 + yo}" x2="{lx + 18}" y2="{513 + yo}" stroke="{PAL["acc_hi"]}" stroke-width="2" stroke-linecap="round"/>')
             tx = lx + 22
         else:
-            out.append(f'<circle cx="{lx + 5}" cy="513" r="5" fill="{PAL["acc_hi"]}" stroke="{PAL["bg"]}" stroke-width="1.2"/>')
+            out.append(f'<circle cx="{lx + 5}" cy="{513 + yo}" r="5" fill="{PAL["acc_hi"]}" stroke="{PAL["bg"]}" stroke-width="1.2"/>')
             tx = lx + 14
-        out.append(f'<text x="{tx}" y="514" font-size="10" font-weight="500" class="muted">{lab}</text>')
+        out.append(f'<text x="{tx}" y="{514 + yo}" font-size="10" font-weight="500" class="muted">{lab}</text>')
         lx -= 12
 
     # Y 网格线（3 级 faint + 基线）
@@ -519,7 +539,7 @@ def trend_section(r, PAL, L):
         if x >= X0:
             out.append(f'<line x1="{x:.1f}" y1="{plot_bot}" x2="{x:.1f}" y2="{plot_bot + 5}" stroke="{PAL["faint"]}" stroke-width="1" opacity="0.5"/>')
             if x < X1 - 22 and (last_lx is None or x - last_lx >= 34):
-                out.append(f'<text x="{x:.1f}" y="646" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">{dd.month}/{dd.day}</text>')
+                out.append(f'<text x="{x:.1f}" y="{646 + yo}" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">{dd.month}/{dd.day}</text>')
                 last_lx = x
         dd += datetime.timedelta(days=7)
 
@@ -529,7 +549,7 @@ def trend_section(r, PAL, L):
     stot = sum(parts)
     names = [L["c_in"], L["c_cached"], L["c_out"], L["c_cc"]]
     cell_w = CW / 4
-    yl, yv = 668, 690
+    yl, yv = 668 + yo, 690 + yo
     for i, (v, nm) in enumerate(zip(parts, names)):
         share = v / stot * 100 if stot else 0
         x = X0 + cell_w * i + 16
@@ -543,11 +563,14 @@ def trend_section(r, PAL, L):
 
 
 def svg_card(r, dark=True, zh=False):
-    """生成 token 卡片 SVG：英雄头部 + 活跃热力图 + 双栏条形图（工具/模型）+ 使用趋势 + 页脚。"""
-    W, H = 900, 754
+    """生成 token 卡片 SVG：终端卡外壳（同画像卡视觉语言）+ 英雄头部 + 活跃热力图
+    + 双栏条形图（工具/模型）+ 使用趋势 + 页脚（含 daemon LIVE 叙事）。"""
+    W, H = 960, 792
+    CARD_X, CARD_W, R, TB_H = 4, 952, 12, 38
     PAD = 32
-    X0, X1 = PAD, W - PAD
+    X0, X1 = CARD_X + PAD, CARD_X + CARD_W - PAD
     CW = X1 - X0
+    YS = TB_H  # 内容整体下移一个 titlebar 高度
     now = datetime.date.today().isoformat()
 
     # 数据驱动的迷你统计（真实缓存拆分 / 峰值 / 对话数，缺数据时回退旧值）
@@ -565,64 +588,77 @@ def svg_card(r, dark=True, zh=False):
     except ValueError:
         start_disp, start_disp_cn = start, start
 
+    # 画像卡同族调色：暗色 #0a0e14 卡体 + #22406a 蓝灰描边，琥珀 accent 保留
     if dark:
-        PAL = dict(bg="#0d1117", card="#161b22", border="#30363d", track="#21262d",
-                   text="#e6edf3", text2="#c9d1d9", muted="#8b949e", faint="#57606a",
+        PAL = dict(bg="#0a0e14", card="#0a0e14", titlebar="#111826", border="#22406a",
+                   track="#161b22", text="#e6edf3", text2="#c9d1d9", muted="#6e7f95",
+                   faint="#57606a", user="#58a6ff", bios="#79c0ff", liv="#f0d861",
                    acc="#f59e0b", acc_hi="#fbbf24", dark=True,
+                   snake=("#c9e4ff", "#79c0ff", "#58a6ff"),
                    split=["#fbbf24", "#f59e0b", "#fde68a", "#8b949e"])
-        HM = ["#21262d", "#4a3a12", "#7d5a17", "#b9821d", "#fbbf24"]   # 琥珀色阶（0-4）
+        HM = ["#161b22", "#4a3a12", "#7d5a17", "#b9821d", "#fbbf24"]   # 琥珀色阶（0-4）
     else:
-        PAL = dict(bg="#ffffff", card="#f6f8fa", border="#d0d7de", track="#eaeef2",
-                   text="#1f2328", text2="#24292f", muted="#656d76", faint="#8c959f",
+        PAL = dict(bg="#ffffff", card="#ffffff", titlebar="#f6f8fa", border="#a9c4e4",
+                   track="#ebedf0", text="#1f2328", text2="#424a53", muted="#8c9bb0",
+                   faint="#8c959f", user="#0969da", bios="#0a5cc2", liv="#9a6700",
                    acc="#b45309", acc_hi="#d97706", dark=False,
+                   snake=("#54aeff", "#0a5cc2", "#0969da"),
                    split=["#d97706", "#b45309", "#f59e0b", "#8c959f"])
         HM = ["#ebedf0", "#f5e0b0", "#e8c26a", "#d69b2f", "#b45309"]
 
     if zh:
         L = dict(aria="AI Token 用量",
+                 tb_cap="token 用量 · 实时",
                  hero_lbl="AI TOKEN 使用量", hero_sub=f"{conv_k:.0f}K+ 对话 · 自 {start_disp_cn} 起",
                  cost_lbl="估算成本", cost_sub="LiteLLM 官方定价",
                  heatmap="TOKEN 活跃热力图", less="少", more="多", today="今日",
+                 eaten_lbl="$ 吃掉的 token：",
                  by_tool="按工具", top_models="模型榜",
                  trend="使用趋势", c_in="输入", c_cached="缓存读", c_out="输出", c_cc="缓存写",
                  lg_bar="每日用量", lg_avg="7日均值", lg_peak="峰值日",
                  foot_stats=f"输入 {fmt_tokens(inp)} · 输出 {fmt_tokens(out)} · 缓存 {cpct:.0f}% · {conv_k:.0f}K 对话",
-                 foot_updated="更新于",
+                 live_note="[LIVE] 守护进程在跑 · 每日刷新",
+                 foot_updated="更新于", more_tools="其余工具",
                  wd={1: "一", 3: "三", 5: "五"})
         def mon_label(m):
             return f"{m} 月"
     else:
         L = dict(aria="AI token usage",
+                 tb_cap="ai token usage · live",
                  hero_lbl="AI TOKEN USAGE", hero_sub=f"{conv_k:.0f}K+ conversations since {start_disp}",
                  cost_lbl="ESTIMATED COST", cost_sub="official pricing · LiteLLM rates",
                  heatmap="TOKEN ACTIVITY", less="Less", more="More", today="TODAY",
+                 eaten_lbl="$ tokens eaten:",
                  by_tool="BY TOOL", top_models="TOP MODELS",
                  trend="USAGE TREND", c_in="INPUT", c_cached="CACHED", c_out="OUTPUT", c_cc="CACHE WRITE",
                  lg_bar="Daily", lg_avg="7d avg", lg_peak="Peak",
                  foot_stats=f"input {fmt_tokens(inp)} · output {fmt_tokens(out)} · cached {cpct:.0f}% · {conv_k:.0f}K conversations",
-                 foot_updated="updated",
+                 live_note="[LIVE] daemon on · regen daily",
+                 foot_updated="updated", more_tools="more tools",
                  wd={1: "Mon", 3: "Wed", 5: "Fri"})
         def mon_label(m):
             return datetime.date(2024, m, 1).strftime("%b")
 
-    if zh:
-        F = '-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif'
-    else:
-        F = '-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif'
-
     hm_cls = "\n".join(f"    .h{k} {{ fill: {c}; }}" for k, c in enumerate(HM))
     lines = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="{L['aria']}">
   <style>
-    .text {{ fill: {PAL['text']}; font-family: {F}; }}
-    .text2 {{ fill: {PAL['text2']}; font-family: {F}; }}
-    .muted {{ fill: {PAL['muted']}; font-family: {F}; }}
-    .faint {{ fill: {PAL['faint']}; font-family: {F}; }}
+    {_font_face_css()}
+    .text {{ fill: {PAL['text']}; font-family: {MONO}; }}
+    .text2 {{ fill: {PAL['text2']}; font-family: {MONO}; }}
+    .muted {{ fill: {PAL['muted']}; font-family: {MONO}; }}
+    .faint {{ fill: {PAL['faint']}; font-family: {MONO}; }}
+    .bios {{ fill: {PAL['bios']}; font-family: {MONO}; }}
     .track {{ fill: {PAL['track']}; }}
     .num {{ font-variant-numeric: tabular-nums; }}
 {hm_cls}
   </style>
-  <rect width="{W}" height="{H}" rx="14" fill="{PAL['bg']}"/>
-  <rect x="1" y="1" width="{W-2}" height="{H-2}" rx="13" fill="none" stroke="{PAL['border']}" stroke-width="1"/>''']
+  <rect x="{CARD_X}" y="0" width="{CARD_W}" height="{H}" rx="{R}" fill="{PAL['card']}" stroke="{PAL['border']}"/>
+  <rect x="{CARD_X}" y="0" width="{CARD_W}" height="{TB_H}" rx="{R}" fill="{PAL['titlebar']}" stroke="{PAL['border']}"/>
+  <circle cx="{CARD_X + 20}" cy="19" r="5.5" fill="#ff5f57"/>
+  <circle cx="{CARD_X + 38}" cy="19" r="5.5" fill="#febc2e"/>
+  <circle cx="{CARD_X + 56}" cy="19" r="5.5" fill="#28c840"/>
+  <text x="{CARD_X + 82}" y="25.2" font-size="15" font-family="{MONO}"><tspan fill="{PAL['user']}" font-weight="700">acfufu@farrell-z</tspan><tspan fill="{PAL['muted']}"> ~ % </tspan><tspan fill="{PAL['text']}">tail -f ~/.tokens</tspan></text>
+  <text x="{CARD_X + CARD_W - 20}" y="25.2" font-size="15" font-family="{MONO}" fill="{PAL['muted']}" text-anchor="end">{esc(L['tb_cap'])}</text>''']
 
     def text(x, y, s, size, weight, cls, anchor="start", spacing=None, num=False):
         extra = f' letter-spacing="{spacing}"' if spacing else ""
@@ -631,18 +667,18 @@ def svg_card(r, dark=True, zh=False):
         lines.append(f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}" class="{cls}" text-anchor="{anchor}"{extra}>{esc(s)}</text>')
 
     # ===== 英雄头部：左大数字 + 右成本（编辑不对称） =====
-    text(X0, 46, L["hero_lbl"], 11, 600, "muted", spacing="2")
+    text(X0, 46 + YS, L["hero_lbl"], 11, 600, "bios", spacing="2")
     hv = fmt_tokens(r["total_tokens"])
-    text(X0, 92, hv, 42, 700, "text", num=True)
-    text(X0 + len(hv) * 23 + 14, 88, "tokens", 13, 600, "muted")
-    text(X0, 114, L["hero_sub"], 11.5, 400, "muted")
-    text(X1, 46, L["cost_lbl"], 11, 600, "muted", anchor="end", spacing="2")
-    text(X1, 88, f"${r['total_cost']/1000:.1f}K", 30, 700, "text", anchor="end", num=True)
-    text(X1, 114, L["cost_sub"], 11.5, 400, "muted", anchor="end")
+    text(X0, 92 + YS, hv, 42, 700, "text", num=True)
+    text(X0 + len(hv) * 25 + 14, 88 + YS, "tokens", 13, 600, "muted")
+    text(X0, 114 + YS, L["hero_sub"], 11.5, 400, "muted")
+    text(X1, 46 + YS, L["cost_lbl"], 11, 600, "bios", anchor="end", spacing="2")
+    text(X1, 88 + YS, f"${r['total_cost']/1000:.1f}K", 30, 700, "text", anchor="end", num=True)
+    text(X1, 114 + YS, L["cost_sub"], 11.5, 400, "muted", anchor="end")
 
     # ===== TOKEN ACTIVITY 热力图（GitHub contribution 风格，琥珀色阶） =====
-    lines.append(f'<line x1="{X0}" y1="128" x2="{X1}" y2="128" stroke="{PAL["track"]}" stroke-width="1"/>')
-    text(X0, 146, L["heatmap"], 11, 600, "muted", spacing="2")
+    lines.append(f'<line x1="{X0}" y1="{128 + YS}" x2="{X1}" y2="{128 + YS}" stroke="{PAL["track"]}" stroke-width="1"/>')
+    text(X0, 146 + YS, L["heatmap"], 11, 600, "muted", spacing="2")
 
     daily = _parse_daily(r)
     today_d = datetime.date.today()
@@ -682,7 +718,7 @@ def svg_card(r, dark=True, zh=False):
     ncol = len(cols)
     hm_w = ncol * pitch
     grid_x = X0 + (CW - hm_w) // 2
-    hm_y = 170
+    hm_y = 170 + YS
 
     # 月份标签（列对应周一→该月起始列）
     prev_m = None
@@ -694,10 +730,52 @@ def svg_card(r, dark=True, zh=False):
         if label_it:
             x = grid_x + i * pitch
             if x < X1 - 26:
-                lines.append(f'<text x="{x}" y="162" font-size="9.5" font-weight="500" class="faint" text-anchor="start">{mon_label(m)}</text>')
+                lines.append(f'<text x="{x}" y="{162 + YS}" font-size="9.5" font-weight="500" class="faint" text-anchor="start">{mon_label(m)}</text>')
         prev_m = m
     for row, lb in L["wd"].items():
         lines.append(f'<text x="{grid_x - 8}" y="{hm_y + row * pitch + 8}" font-size="9" font-weight="500" class="faint" text-anchor="end">{lb}</text>')
+    # ===== 贪吃蛇层（自画像卡 git log 迁移）：蛇形遍历热力图，真吃 =====
+    # 路径按列往返（boustrophedon），只踩真实渲染的格子；蛇尾离开后格子保持
+    # 空色（track，与 h0 同色）直到周期末，下一个周期开始时热力图满血复原。
+    # prefers-reduced-motion 下整层静止、热力图完整可读。
+    CYCLE, BODY_HOLD, NC = 30.7, 5, 92
+    path_cells = []  # (x, y, lev, tokens) 按蛇行进顺序
+    for i, ws in enumerate(cols):
+        rows = range(7) if i % 2 == 0 else range(6, -1, -1)
+        for row in rows:
+            dd = ws + datetime.timedelta(days=row)
+            if dd < start_d or dd > today_d:
+                continue
+            path_cells.append((grid_x + i * pitch, hm_y + row * pitch,
+                               lvl(daily.get(dd, 0)), daily.get(dd, 0)))
+    n = len(path_cells)
+    step = 91.3 / max(n, 1)
+    path_k = {(x, y): k for k, (x, y, *_r) in enumerate(path_cells)}
+    snk_head, snk_flash, snk_body = PAL["snake"]
+    snake_css = ["@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }"]
+    for k, (x, y, lev, _tok) in enumerate(path_cells):
+        a = k * step
+        b, c = a + step, a + 2 * step
+        e = a + (2 + BODY_HOLD) * step
+        orig = HM[lev]
+        snake_css.append(f".m{k} {{ animation: m{k} {CYCLE}s linear infinite; }}")
+        snake_css.append(f"@keyframes m{k} {{ 0%,{a:.3f}% {{ fill:{orig}; }} {a + 0.05:.3f}% "
+                         f"{{ fill:{snk_head}; }} {b:.3f}% {{ fill:{snk_flash}; }} "
+                         f"{c:.3f}%,{e - 0.05:.3f}% {{ fill:{snk_body}; }} "
+                         f"{e:.3f}%,100% {{ fill:{PAL['track']}; }} }}")
+    prefix, run = [0], 0
+    for *_pos, tok in path_cells:
+        run += tok
+        prefix.append(run)
+    total_path = prefix[-1]
+    tt = fmt_tokens(total_path)
+    for k in range(NC):
+        i0, i1 = round(k * n / NC), round((k + 1) * n / NC)
+        a, b = i0 * step, min(i1 * step, 100.0)
+        snake_css.append(f".r{k} {{ opacity:0; animation: r{k} {CYCLE}s steps(1,end) infinite; }}")
+        snake_css.append(f"@keyframes r{k} {{ 0% {{ opacity:0; }} {a:.3f}% {{ opacity:1; }} "
+                         f"{b:.3f}%,100% {{ opacity:0; }} }}")
+
     for i, ws in enumerate(cols):
         x = grid_x + i * pitch
         for row in range(7):
@@ -705,7 +783,13 @@ def svg_card(r, dark=True, zh=False):
             if dd < start_d or dd > today_d:
                 continue
             lev = lvl(daily.get(dd, 0))
-            lines.append(f'<rect x="{x}" y="{hm_y + row * pitch}" width="{cell}" height="{cell}" rx="2" class="h{lev}"/>')
+            x_, y_ = grid_x + i * pitch, hm_y + row * pitch
+            k = path_k.get((x_, y_))
+            if k is None:
+                lines.append(f'<rect x="{x_}" y="{y_}" width="{cell}" height="{cell}" rx="2" class="h{lev}"/>')
+            else:
+                lines.append(f'<rect x="{x_}" y="{y_}" width="{cell}" height="{cell}" rx="2" '
+                             f'class="m{k}" fill="{HM[lev]}"/>')
     # 图例（网格右下，GitHub 风格）
     sw, lg_y = 8, hm_y + 7 * pitch + 18
     sw_x_end = grid_x + hm_w - 30
@@ -720,23 +804,33 @@ def svg_card(r, dark=True, zh=False):
     text(sx, hm_y + 36, t_label.upper() if not zh else t_label, 9.5, 600, "faint", spacing="2" if not zh else None)
     text(sx, hm_y + 54, fmt_tokens(daily.get(today_d, 0)), 13, 600, "text2", num=True)
 
+    # 蛇层样式 + "$ tokens eaten" 继电器计数（与蛇进度同周期同步；与图例同线靠左）
+    lines.append(f"<style>{''.join(snake_css)}</style>")
+    lines.append(f'<text x="{X0}" y="{lg_y + 8}" font-size="9.5" font-weight="500" '
+                 f'font-family="{MONO}" fill="{PAL["muted"]}">{esc(L["eaten_lbl"])}</text>')
+    for k in range(NC):
+        i1 = min(round((k + 1) * n / NC), n)
+        lines.append(f'<text class="r{k}" x="{X0 + 108}" y="{lg_y + 8}" font-size="9.5" font-weight="600" '
+                     f'font-family="{MONO}" fill="{PAL["user"]}">{fmt_tokens(prefix[i1])}/{tt}</text>')
+
     # ===== 双栏：BY TOOL 条 | TOP MODELS 条（同构条形图） =====
     col_gap, left_w = 28, 400
     rgt_x = X0 + left_w + col_gap
     rgt_w = X1 - rgt_x
-    text(X0, 304, L["by_tool"], 11, 600, "muted", spacing="2")
-    text(rgt_x, 304, L["top_models"], 11, 600, "muted", spacing="2")
-    y0 = 318
+    text(X0, 304 + YS, L["by_tool"], 11, 600, "muted", spacing="2")
+    text(rgt_x, 304 + YS, L["top_models"], 11, 600, "muted", spacing="2")
+    y0 = 318 + YS
     agents = r["by_agent"]
     total = r["total_tokens"]
 
-    # 左栏：工具（品牌色）
+    # 左栏：工具（品牌色）——只列前 6，长尾折叠成汇总行
+    # （历史 bug：工具全列时行数不封顶，会与趋势区标题重叠）
     label_w, pct_w = 72, 96
     track_x = X0 + label_w
     track_w = left_w - label_w - pct_w
-    for i, (name, tok) in enumerate(agents.items()):
-        if tok <= 0:
-            continue
+    TOOL_SHOW = 6
+    tool_items = [(n, t) for n, t in agents.items() if t > 0]
+    for i, (name, tok) in enumerate(tool_items[:TOOL_SHOW]):
         pct = tok / total * 100 if total else 0
         bw = max(track_w * pct / 100, 2)
         color = AGENT_COLORS.get(name.lower(), "#8b949e")
@@ -744,6 +838,13 @@ def svg_card(r, dark=True, zh=False):
         lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{track_w}" height="10" rx="3" class="track"/>')
         lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{color}" opacity="0.9"/>')
         text(X0 + left_w, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
+    rest = tool_items[TOOL_SHOW:]
+    if rest:
+        rs = sum(t for _, t in rest)
+        rpct = rs / total * 100 if total else 0
+        text(X0, y0 + 10 + TOOL_SHOW * 26,
+             f"+{len(rest)} {L['more_tools']} · {fmt_tokens(rs)} ({rpct:.0f}%)",
+             10.5, 400, "faint", num=True)
 
     # 右栏：模型（琥珀强调色）
     rlabel_w, rpct_w = 126, 84
@@ -758,12 +859,14 @@ def svg_card(r, dark=True, zh=False):
         text(X1, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
 
     # ===== 使用趋势（最近 30 天窗口：日柱 + 7日均线 + 拆分） =====
-    lines.extend(trend_section(r, PAL, L))
+    lines.extend(trend_section(r, PAL, L, X0, X1, YS))
 
-    # ===== 页脚 =====
-    lines.append(f'<line x1="{X0}" y1="706" x2="{X1}" y2="706" stroke="{PAL["track"]}" stroke-width="1"/>')
-    text(X0, 734, L["foot_stats"], 10.5, 400, "muted", num=True)
-    text(X1, 734, f'{L["foot_updated"]} {now}', 10.5, 400, "faint", anchor="end")
+    # ===== 页脚（右侧接管 whoami 卡退场后的 daemon LIVE 叙事） =====
+    lines.append(f'<line x1="{X0}" y1="{706 + YS}" x2="{X1}" y2="{706 + YS}" stroke="{PAL["track"]}" stroke-width="1"/>')
+    text(X0, 734 + YS, L["foot_stats"], 10.5, 400, "muted", num=True)
+    lines.append(f'<text x="{X1}" y="{734 + YS}" font-size="10.5" font-family="{MONO}" text-anchor="end">'
+                 f'<tspan fill="{PAL["liv"]}">{esc(L["live_note"])}</tspan>'
+                 f'<tspan fill="{PAL["muted"]}"> · {esc(L["foot_updated"])} {now}</tspan></text>')
 
     return "\n".join(lines) + "\n</svg>\n"
 
@@ -868,12 +971,21 @@ def _unpushed_commits():
 
 
 README_FILES = ("README.md", "README.zh-CN.md")
-# (属性, 文件名)：README 里引用的 token-stats 图片（GitHub 重写相对路径时保留 query）
+# (属性, 文件名)：README 里引用的图片（GitHub 重写相对路径时保留 query）。
+# 画像卡与 wall 卡纳入 bump：它们由 wall 管线低频再生成，camo 缓存同样按 URL 命中。
 _README_IMGS = (
     ("srcset", "token-stats-dark.svg"),
     ("src", "token-stats-light.svg"),
     ("srcset", "token-stats-zh-dark.svg"),
     ("src", "token-stats-zh-light.svg"),
+    ("srcset", "assets/profile-dark.svg"),
+    ("src", "assets/profile-light.svg"),
+    ("srcset", "assets/profile-zh-dark.svg"),
+    ("src", "assets/profile-zh-light.svg"),
+    ("srcset", "assets/wall-dark.svg"),
+    ("src", "assets/wall-light.svg"),
+    ("srcset", "assets/wall-zh-dark.svg"),
+    ("src", "assets/wall-zh-light.svg"),
 )
 
 
