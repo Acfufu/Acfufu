@@ -30,3 +30,12 @@ artifacts/
 .preview/
 .v2c/
 .lazyzcode/
+.memignore
+.pytest_cache/
+
+# Design-work scratch: HTML previews, superseded/v2 scripts, replica outputs.
+# Kept locally only - promote with `git add -f` if ever publishing.
+preview/
+scripts/gen_profile_svg.py
+scripts/gen_dahan_replica.py
+assets/replica-profile-*.svg
