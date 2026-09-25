@@ -1,17 +1,17 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1790378835">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1790378917">
   <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg">
   <img src="assets/profile-dark.svg" width="100%" alt="acfufu: ai-native dev tools, a pixel pet, a snake eating commits, and a guestbook.">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1790378835">
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1790378917">
   <source media="(prefers-color-scheme: light)" srcset="token-stats-light.svg">
   <img src="token-stats-dark.svg" width="100%" alt="ai token usage">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-dark.svg?v=1790378835">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-dark.svg?v=1790378917">
   <source media="(prefers-color-scheme: light)" srcset="assets/wall-light.svg">
   <img src="assets/wall-dark.svg" width="100%" alt="acfufu wall — leave a message">
 </picture>
