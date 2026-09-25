@@ -78,17 +78,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Pillow
-        if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
-        run: pip install pillow
-
       - name: Append message and regenerate card
         if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
         env:
           WALL_MSG: ${{ steps.parse.outputs.message }}
           WALL_USER: ${{ steps.parse.outputs.user }}
           WALL_DATE: ${{ steps.parse.outputs.date }}
-          STRICT_CONTRIB: '1'
         run: |
           python3 - <<'EOF'
           import json, os
@@ -103,13 +98,33 @@ jobs:
           open(path, "w").write(json.dumps(entries, ensure_ascii=False, indent=2) + "\n")
           EOF
           python3 scripts/gen_acfufu_card.py
+          python3 - <<'EOF'
+          # 重生成后 bump README 图片缓存参数（camo 按 URL 命中，内容变了 URL 必须变）
+          import re, time
+          v = str(int(time.time()))
+          imgs = ("assets/profile-dark.svg", "assets/profile-light.svg",
+                  "assets/profile-zh-dark.svg", "assets/profile-zh-light.svg",
+                  "assets/wall-dark.svg", "assets/wall-light.svg",
+                  "assets/wall-zh-dark.svg", "assets/wall-zh-light.svg")
+          for fname in ("README.md", "README.zh-CN.md"):
+              text = open(fname).read()
+              for img in imgs:
+                  for attr in ("srcset", "src"):
+                      text = re.sub(rf'({attr}="{re.escape(img)})(\?v=[^"]*)?(")',
+                                    rf"\g<1>?v={v}\g<3>", text)
+              open(fname, "w").write(text)
+          EOF
 
       - name: Commit and push
         if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
         run: |
           git config user.name "acfufu-wall-bot"
           git config user.email "actions@github.com"
-          git add assets/profile-dark.svg assets/profile-light.svg data/wall.json
+          git add assets/profile-dark.svg assets/profile-light.svg \
+            assets/profile-zh-dark.svg assets/profile-zh-light.svg \
+            assets/wall-dark.svg assets/wall-light.svg \
+            assets/wall-zh-dark.svg assets/wall-zh-light.svg \
+            data/wall.json README.md README.zh-CN.md
           git commit -m "wall: message from @${{ steps.parse.outputs.user }}"
           git push
 
