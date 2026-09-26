@@ -45,6 +45,8 @@ import subprocess
 import sys
 import time
 import urllib.request
+from bisect import bisect_right
+from collections import deque
 
 # ============ 配置 ============
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -562,6 +564,145 @@ def trend_section(r, PAL, L, x0, x1, yo=0):
     return out
 
 
+# ============ 贪吃蛇路径规划 ============
+def plan_snake_route(cells, base_len=3, caps=(40, 36, 32, 28, 24, 20, 16, 12)):
+    """觅食式路径：像玩家操纵的蛇逐格狩猎，而不是固定扫描线。
+
+    cells: {(col,row): 亮度级别}，只含真实渲染的格子，级别>0 视为食物。
+    每轮选目标：离蛇头最近者优先、同距偏好更亮的格子；对前 24 个候选逐个
+    BFS 最短路（蛇身为障碍），走过去途中每吃一格身体长一节。每步落子前
+    检查"走完后尾巴仍可达"（BFS 头→尾）防自困；被自己围死时改追尾巴
+    腾空间。上限 cap 从大到小搜索，取还能吃完全盘的最大身长。
+
+    返回 (route, eats, growth, pops, left)：route 为逐格坐标序列；eats 为
+    [(route 下标, 格子)]；growth 为触发长节的 route 下标；pops[s] 为第 s 步
+    弹出的尾节数（0/1，踩尾原步与普通挪动都会弹尾，渲染器据此重放蛇身）；
+    left 为没吃到的食物数（0 = 全清）。棋盘无食物时返回 None。
+    """
+    food = {cr for cr, lev in cells.items() if lev > 0}
+    if not food:
+        return None
+    cmax = max(c for c, _ in cells)
+
+    def neighbors(cr):
+        c, r = cr
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = (c + dc, r + dr)
+            if 0 <= nb[0] <= cmax and 0 <= nb[1] <= 6 and nb in cells:
+                yield nb
+
+    def bfs(src, goal, blocked):
+        if src == goal:
+            return [src]
+        q, seen = deque([(src, [src])]), {src}
+        while q:
+            cur, path = q.popleft()
+            for nb in neighbors(cur):
+                if nb in seen or (nb in blocked and nb != goal):
+                    continue
+                if nb == goal:
+                    return path + [nb]
+                seen.add(nb)
+                q.append((nb, path + [nb]))
+        return None
+
+    def solve(cap):
+        start = min(food, key=lambda cr: (cr[0], abs(cr[1] - 3)))
+        remaining = set(food)
+        body = deque([start])
+        occupied = {start}
+        route, eats, growth = [start], [], []
+        pops = [0]
+
+        def eat(cr):
+            remaining.discard(cr)
+            eats.append((len(route) - 1, cr))
+            if base_len + len(growth) < cap:
+                growth.append(len(route) - 1)
+
+        def step_to(cr):
+            removed = 0
+            if cr == body[0] and cr not in remaining:
+                # 踩尾原步：先弹尾再进格，保持 occupied 与 body 同步
+                occupied.discard(body.popleft())
+                removed = 1
+            route.append(cr)
+            pops.append(0)
+            body.append(cr)
+            occupied.add(cr)
+            if cr in remaining:
+                eat(cr)
+            while len(body) > base_len + len(growth):
+                occupied.discard(body.popleft())
+                removed = 1
+            pops[len(pops) - 1] = removed
+
+        eat(start)
+
+        def safe_step(cr):
+            # 长身后尾巴必须仍可达，否则这步会把路走死
+            if len(body) < 8:
+                return True
+            new_occ = set(occupied) | {cr}
+            new_tail = body[0]
+            if cr not in remaining:  # 只有吃格子才净长一节
+                new_occ.discard(body[0])
+                new_tail = body[1] if len(body) > 1 else cr
+            return bfs(cr, new_tail, new_occ - {new_tail, cr}) is not None
+
+        stuck = 0
+        while remaining and len(route) < 4000:
+            head = body[-1]
+            blocked = occupied - {head}
+            path = None
+            for cand in sorted(
+                remaining,
+                key=lambda cr: abs(cr[0] - head[0]) + abs(cr[1] - head[1]) + cells[cr] * 2,
+            )[:24]:
+                p_ = bfs(head, cand, blocked)
+                if p_ and len(p_) > 1:
+                    path = p_
+                    break
+            if path:
+                aborted = False
+                for cell in path[1:]:
+                    if not safe_step(cell):
+                        aborted = True
+                        break
+                    step_to(cell)
+                if not aborted:
+                    stuck = 0
+                    continue
+            # 被围：追尾巴一步步退，尾巴挪开就腾出空间。
+            # 踩尾格合法（尾巴同拍挪走，尾格必非食物、不会长身），死角全靠它脱困。
+            stuck += 1
+            if stuck > 400:
+                break
+            head = body[-1]
+            tail = body[0]
+            tpath = bfs(head, tail, (occupied - {head}) - {tail})
+            nxt = None
+            if tpath and len(tpath) > 1 and (tpath[1] == tail or tpath[1] not in occupied) and safe_step(tpath[1]):
+                nxt = tpath[1]
+            else:
+                free = [nb for nb in neighbors(head) if nb not in occupied or nb == tail]
+                safe = [nb for nb in free if safe_step(nb)]
+                pool = safe or free
+                if pool:  # 哪边空间大往哪边挪
+                    nxt = max(pool, key=lambda cr: sum(1 for n2 in neighbors(cr) if n2 not in occupied))
+            if nxt is None:
+                break
+            step_to(nxt)
+
+        return route, eats, growth, pops, len(remaining)
+
+    for cap in caps:
+        route, eats, growth, pops, left = solve(cap)
+        if left == 0:
+            break
+    return route, eats, growth, pops, left
+
+
 def svg_card(r, dark=True, zh=False):
     """生成 token 卡片 SVG：终端卡外壳（同画像卡视觉语言）+ 英雄头部 + 活跃热力图
     + 双栏条形图（工具/模型）+ 使用趋势 + 页脚（含 daemon LIVE 叙事）。"""
@@ -595,6 +736,7 @@ def svg_card(r, dark=True, zh=False):
                    faint="#57606a", user="#58a6ff", bios="#79c0ff", liv="#f0d861",
                    acc="#f59e0b", acc_hi="#fbbf24", dark=True,
                    snake=("#c9e4ff", "#79c0ff", "#58a6ff"),
+                   snake_tail=("#4485d4", "#3a6cb0"),
                    split=["#fbbf24", "#f59e0b", "#fde68a", "#8b949e"])
         HM = ["#161b22", "#4a3a12", "#7d5a17", "#b9821d", "#fbbf24"]   # 琥珀色阶（0-4）
     else:
@@ -603,6 +745,7 @@ def svg_card(r, dark=True, zh=False):
                    faint="#8c959f", user="#0969da", bios="#0a5cc2", liv="#9a6700",
                    acc="#b45309", acc_hi="#d97706", dark=False,
                    snake=("#54aeff", "#0a5cc2", "#0969da"),
+                   snake_tail=("#3d8ae0", "#79b3ec"),
                    split=["#d97706", "#b45309", "#f59e0b", "#8c959f"])
         HM = ["#ebedf0", "#f5e0b0", "#e8c26a", "#d69b2f", "#b45309"]
 
@@ -734,62 +877,101 @@ def svg_card(r, dark=True, zh=False):
         prev_m = m
     for row, lb in L["wd"].items():
         lines.append(f'<text x="{grid_x - 8}" y="{hm_y + row * pitch + 8}" font-size="9" font-weight="500" class="faint" text-anchor="end">{lb}</text>')
-    # ===== 贪吃蛇层（自画像卡 git log 迁移）：蛇形遍历热力图，真吃 =====
-    # 路径按列往返（boustrophedon），只踩真实渲染的格子；蛇尾离开后格子保持
-    # 空色（track，与 h0 同色）直到周期末，下一个周期开始时热力图满血复原。
+    # ===== 贪吃蛇层：觅食式 BFS 寻路 + 吃格子变长，真吃到周期末 =====
+    # 蛇像玩家操纵一样逐格狩猎（BFS 绕开蛇身、防自困），每吃一格长一节；
+    # 每格按占用模拟生成 keyframes：进格闪头色 → 按入队年龄转暗（头亮尾暗），
+    # 蛇尾离开后被吃格子保持空色（track）直到周期末，周期重启热力图复原。
     # prefers-reduced-motion 下整层静止、热力图完整可读。
-    CYCLE, BODY_HOLD, NC = 30.7, 5, 92
-    path_cells = []  # (x, y, lev, tokens) 按蛇行进顺序
+    NC = 92
+    grid_cells = {}  # (col,row) -> (x, y, lev, tokens)，只含真实渲染的格子
     for i, ws in enumerate(cols):
-        rows = range(7) if i % 2 == 0 else range(6, -1, -1)
-        for row in rows:
-            dd = ws + datetime.timedelta(days=row)
-            if dd < start_d or dd > today_d:
-                continue
-            path_cells.append((grid_x + i * pitch, hm_y + row * pitch,
-                               lvl(daily.get(dd, 0)), daily.get(dd, 0)))
-    n = len(path_cells)
-    step = 91.3 / max(n, 1)
-    path_k = {(x, y): k for k, (x, y, *_r) in enumerate(path_cells)}
-    snk_head, snk_flash, snk_body = PAL["snake"]
-    snake_css = ["@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }"]
-    for k, (x, y, lev, _tok) in enumerate(path_cells):
-        a = k * step
-        b, c = a + step, a + 2 * step
-        e = a + (2 + BODY_HOLD) * step
-        orig = HM[lev]
-        snake_css.append(f".m{k} {{ animation: m{k} {CYCLE}s linear infinite; }}")
-        snake_css.append(f"@keyframes m{k} {{ 0%,{a:.3f}% {{ fill:{orig}; }} {a + 0.05:.3f}% "
-                         f"{{ fill:{snk_head}; }} {b:.3f}% {{ fill:{snk_flash}; }} "
-                         f"{c:.3f}%,{e - 0.05:.3f}% {{ fill:{snk_body}; }} "
-                         f"{e:.3f}%,100% {{ fill:{PAL['track']}; }} }}")
-    prefix, run = [0], 0
-    for *_pos, tok in path_cells:
-        run += tok
-        prefix.append(run)
-    total_path = prefix[-1]
-    tt = fmt_tokens(total_path)
-    for k in range(NC):
-        i0, i1 = round(k * n / NC), round((k + 1) * n / NC)
-        a, b = i0 * step, min(i1 * step, 100.0)
-        snake_css.append(f".r{k} {{ opacity:0; animation: r{k} {CYCLE}s steps(1,end) infinite; }}")
-        snake_css.append(f"@keyframes r{k} {{ 0% {{ opacity:0; }} {a:.3f}% {{ opacity:1; }} "
-                         f"{b:.3f}%,100% {{ opacity:0; }} }}")
-
-    for i, ws in enumerate(cols):
-        x = grid_x + i * pitch
         for row in range(7):
             dd = ws + datetime.timedelta(days=row)
-            if dd < start_d or dd > today_d:
-                continue
-            lev = lvl(daily.get(dd, 0))
-            x_, y_ = grid_x + i * pitch, hm_y + row * pitch
-            k = path_k.get((x_, y_))
-            if k is None:
-                lines.append(f'<rect x="{x_}" y="{y_}" width="{cell}" height="{cell}" rx="2" class="h{lev}"/>')
+            if start_d <= dd <= today_d:
+                grid_cells[(i, row)] = (grid_x + i * pitch, hm_y + row * pitch,
+                                        lvl(daily.get(dd, 0)), daily.get(dd, 0))
+    plan = plan_snake_route({cr: g[2] for cr, g in grid_cells.items()})
+    route, eats, growth, pops = plan[:4] if plan else ([], [], [], [])
+    n = len(route)
+    SPS, PAUSE = 10, 26  # 10 格/秒；片尾停 2.6s 让吃空的棋盘和满格计数停留
+    total = n + PAUSE
+    dur = total / SPS
+
+    def pct(s):
+        return round(s / total * 100, 3)
+
+    # 占用模拟 → 每格被蛇身占据的时间区间（按 pops 重放真实蛇身，
+    # 踩尾原步会让蛇身不再是 route 的连续切片，不能按切片偷懒）
+    intervals, open_iv = {}, {}
+    body, prev = deque(), set()
+    for s in range(n):
+        body.append(route[s])
+        if pops[s]:
+            body.popleft()
+        cur = set(body)
+        for cr in cur - prev:
+            open_iv[cr] = s
+        for cr in prev - cur:
+            intervals.setdefault(cr, []).append((open_iv.pop(cr), s))
+        prev = cur
+    for cr, s0 in open_iv.items():
+        intervals.setdefault(cr, []).append((s0, total))  # 在场蛇身持续到片尾
+
+    eaten_at = {cr: s for s, cr in eats}  # 格子 -> 吃掉时的路由下标
+    snk_head, snk_flash, snk_body = PAL["snake"]
+    snk_old1, snk_old2 = PAL["snake_tail"]
+    RAMP = ((1, snk_flash), (5, snk_body), (13, snk_old1), (26, snk_old2))
+    snake_css = ["@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }"]
+    for cr, ivs in intervals.items():
+        base = HM[grid_cells[cr][2]]
+        cls = f"m{cr[0]}_{cr[1]}"
+        stops = [(0.0, base)]
+        for a, b in ivs:
+            post = PAL["track"] if eaten_at.get(cr, n) <= b else base
+            pa = pct(a)
+            stops.append((max(pa - 0.05, 0.0), None))  # 进格前保持原色
+            stops.append((pa, snk_head))
+            for age, col in RAMP:  # 身体按入队年龄转暗：头亮尾暗
+                if a + age < b:
+                    stops.append((pct(a + age), col))
+            if b < total:
+                pb = pct(b)
+                stops.append((max(pb - 0.05, 0.0), None))
+                stops.append((pb, post))
+        frames, last = [], base
+        for p, col in stops:
+            if col is None:
+                frames.append(f"{p:.3f}% {{ fill:{last}; }}")
             else:
-                lines.append(f'<rect x="{x_}" y="{y_}" width="{cell}" height="{cell}" rx="2" '
-                             f'class="m{k}" fill="{HM[lev]}"/>')
+                frames.append(f"{p:.3f}% {{ fill:{col}; }}")
+                last = col
+        frames.append(f"100% {{ fill:{last}; }}")
+        snake_css.append(f"@keyframes k{cls} {{ {' '.join(frames)} }}\n"
+                         f".{cls} {{ animation: k{cls} {dur:.1f}s linear infinite; }}")
+
+    # "$ tokens eaten" 前缀和沿新路由累计（吃掉的仍是全盘所有 token 格）
+    pre, run = [0], 0
+    for s, cr in enumerate(route):
+        if eaten_at.get(cr) == s:
+            run += grid_cells[cr][3]
+        pre.append(run)
+    tt = fmt_tokens(run)
+    for k in range(NC):
+        i0, i1 = round(k * n / NC), round((k + 1) * n / NC)
+        if i1 <= i0:
+            continue
+        a, b = pct(i0), pct(i1)
+        if i1 >= n:  # 最后一段连着片尾暂停一起停留
+            frames = f"0% {{ opacity:0; }} {a:.3f}% {{ opacity:1; }} 100% {{ opacity:1; }}"
+        else:
+            frames = f"0% {{ opacity:0; }} {a:.3f}% {{ opacity:1; }} {b:.3f}%,100% {{ opacity:0; }}"
+        snake_css.append(f"@keyframes r{k} {{ {frames} }}\n"
+                         f".r{k} {{ opacity:0; animation: r{k} {dur:.1f}s steps(1,end) infinite; }}")
+
+    for (i, row), (x_, y_, lev, _tok) in sorted(grid_cells.items()):
+        cls = f"m{i}_{row}" if (i, row) in intervals else f"h{lev}"
+        lines.append(f'<rect x="{x_}" y="{y_}" width="{cell}" height="{cell}" rx="2" '
+                     f'class="{cls}" fill="{HM[lev]}"/>')
     # 图例（网格右下，GitHub 风格）
     sw, lg_y = 8, hm_y + 7 * pitch + 18
     sw_x_end = grid_x + hm_w - 30
@@ -809,9 +991,11 @@ def svg_card(r, dark=True, zh=False):
     lines.append(f'<text x="{X0}" y="{lg_y + 8}" font-size="9.5" font-weight="500" '
                  f'font-family="{MONO}" fill="{PAL["muted"]}">{esc(L["eaten_lbl"])}</text>')
     for k in range(NC):
-        i1 = min(round((k + 1) * n / NC), n)
+        i0, i1 = round(k * n / NC), round((k + 1) * n / NC)
+        if i1 <= i0:
+            continue
         lines.append(f'<text class="r{k}" x="{X0 + 108}" y="{lg_y + 8}" font-size="9.5" font-weight="600" '
-                     f'font-family="{MONO}" fill="{PAL["user"]}">{fmt_tokens(prefix[i1])}/{tt}</text>')
+                     f'font-family="{MONO}" fill="{PAL["user"]}">{fmt_tokens(pre[i1])}/{tt}</text>')
 
     # ===== 双栏：BY TOOL 条 | TOP MODELS 条（同构条形图） =====
     col_gap, left_w = 28, 400
