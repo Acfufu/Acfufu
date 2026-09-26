@@ -1,17 +1,17 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-zh-dark.svg?v=1790383943">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-zh-dark.svg?v=1790384050">
   <source media="(prefers-color-scheme: light)" srcset="assets/profile-zh-light.svg">
   <img src="assets/profile-zh-dark.svg" width="100%" alt="acfufu：AI-native 开发工具、像素宠物、吃 commit 的蛇和留言墙。">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="token-stats-zh-dark.svg?v=1790383943">
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-zh-dark.svg?v=1790384050">
   <source media="(prefers-color-scheme: light)" srcset="token-stats-zh-light.svg">
   <img src="token-stats-zh-dark.svg" width="100%" alt="AI Token 用量">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-zh-dark.svg?v=1790383943">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-zh-dark.svg?v=1790384050">
   <source media="(prefers-color-scheme: light)" srcset="assets/wall-zh-light.svg">
   <img src="assets/wall-zh-dark.svg" width="100%" alt="acfufu 留言墙 —— 留一句话">
 </picture>

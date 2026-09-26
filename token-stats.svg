@@ -244,7 +244,7 @@
 <rect x="624" y="317" width="8" height="8" rx="1.5" class="h4"/>
 <text x="658" y="325" font-size="10" font-weight="500" class="faint" text-anchor="end">More</text>
 <text x="688" y="244" font-size="9.5" font-weight="600" class="faint" text-anchor="start" letter-spacing="2">TODAY</text>
-<text x="688" y="262" font-size="13" font-weight="600" class="text2 num" text-anchor="start">607.4M</text>
+<text x="688" y="262" font-size="13" font-weight="600" class="text2 num" text-anchor="start">609.0M</text>
 <style>@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }@keyframes km0_5 { 0.000% { fill:#4a3a12; } 0.000% { fill:#4a3a12; } 0.000% { fill:#c9e4ff; } 0.424% { fill:#79c0ff; } 2.119% { fill:#58a6ff; } 5.458% { fill:#58a6ff; } 5.508% { fill:#161b22; } 70.289% { fill:#161b22; } 70.339% { fill:#c9e4ff; } 70.763% { fill:#79c0ff; } 72.458% { fill:#58a6ff; } 75.847% { fill:#4485d4; } 81.356% { fill:#3a6cb0; } 87.238% { fill:#3a6cb0; } 87.288% { fill:#161b22; } 100% { fill:#161b22; } }
 .m0_5 { animation: km0_5 23.6s linear infinite; }@keyframes km1_5 { 0.000% { fill:#161b22; } 0.374% { fill:#161b22; } 0.424% { fill:#c9e4ff; } 0.847% { fill:#79c0ff; } 2.542% { fill:#58a6ff; } 5.882% { fill:#58a6ff; } 5.932% { fill:#161b22; } 12.238% { fill:#161b22; } 12.288% { fill:#c9e4ff; } 12.712% { fill:#79c0ff; } 14.407% { fill:#58a6ff; } 17.797% { fill:#4485d4; } 23.305% { fill:#3a6cb0; } 24.103% { fill:#3a6cb0; } 24.153% { fill:#161b22; } 100% { fill:#161b22; } }
 .m1_5 { animation: km1_5 23.6s linear infinite; }@keyframes km2_5 { 0.000% { fill:#4a3a12; } 0.797% { fill:#4a3a12; } 0.847% { fill:#c9e4ff; } 1.271% { fill:#79c0ff; } 2.966% { fill:#58a6ff; } 6.306% { fill:#58a6ff; } 6.356% { fill:#161b22; } 10.967% { fill:#161b22; } 11.017% { fill:#c9e4ff; } 11.441% { fill:#79c0ff; } 13.136% { fill:#58a6ff; } 16.525% { fill:#4485d4; } 19.865% { fill:#4485d4; } 19.915% { fill:#161b22; } 100% { fill:#161b22; } }
@@ -554,9 +554,9 @@
 <text class="r53" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">33.1B/60.3B</text>
 <text class="r54" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">34.5B/60.3B</text>
 <text class="r55" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">35.8B/60.3B</text>
-<text class="r56" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">37.4B/60.3B</text>
+<text class="r56" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">37.5B/60.3B</text>
 <text class="r57" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">37.8B/60.3B</text>
-<text class="r58" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">39.1B/60.3B</text>
+<text class="r58" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">39.2B/60.3B</text>
 <text class="r59" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">39.6B/60.3B</text>
 <text class="r60" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">39.6B/60.3B</text>
 <text class="r61" x="144" y="325" font-size="9.5" font-weight="600" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" fill="#58a6ff">45.3B/60.3B</text>
@@ -682,7 +682,7 @@
 <rect x="821.1" y="626.8" width="22.0" height="39.2" rx="1" fill="url(#tgd)"/>
 <rect x="851.7" y="657.2" width="22.0" height="8.8" rx="1" fill="url(#tgd)"/>
 <rect x="882.4" y="619.9" width="22.0" height="46.1" rx="1" fill="url(#tgd)"/>
-<rect x="913.0" y="625.5" width="11.0" height="40.5" rx="1" fill="url(#tgd)"/>
+<rect x="913.0" y="625.4" width="11.0" height="40.6" rx="1" fill="url(#tgd)"/>
 <polyline points="36.0,655.6 66.6,659.6 97.2,659.6 127.9,660.9 158.5,660.1 189.1,661.1 250.3,658.5 281.0,652.8 311.6,646.2 342.2,641.1 372.8,631.4 403.4,625.8 434.1,619.9 464.7,619.0 495.3,614.7 525.9,609.5 556.6,604.9 587.2,604.4 617.8,600.3 648.4,592.6 679.0,586.1 709.7,590.7 740.3,589.6 770.9,587.5 801.5,592.5 832.1,597.9 862.8,610.3 893.4,614.4 924.0,615.4" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
 <circle cx="648.4" cy="569.8" r="4" fill="#fbbf24" stroke="#0a0e14" stroke-width="2"/>
 <text x="656.4" y="560.8" font-size="10" font-weight="600" class="text2" text-anchor="start">9/17 · 1.4B</text>
