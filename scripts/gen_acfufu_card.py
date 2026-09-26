@@ -17,8 +17,9 @@ card (reverted — it duplicated the README's markdown link rows). The git-log
 snake now lives in the token dashboard's TOKEN
 ACTIVITY heatmap (token-stats.py). Glossary: CONTEXT.md.
 
-Content is Acfufu's: measured language shares, agent-stack canon (mirrors the
-token dashboard's BY TOOL order + TOP MODELS families).
+Content is Acfufu's: measured language shares (C#/Java appended as
+also-used, below the measured cutoff), the tools row (everyday infra), and
+the models row canon (mirrors the token dashboard's TOP MODELS families).
 """
 import json
 import re
@@ -35,7 +36,7 @@ CACHE = Path("/tmp/dahan-replica-cache")  # shared: plex fonts + icons
 REPO_CACHE = ROOT / "assets" / "gen-cache"  # vendored copy so CI never needs the network
 
 W = 960
-H = 500
+H = 564
 CARD_X, CARD_W, R = 4, 952, 12
 TB_H = 38
 
@@ -50,18 +51,50 @@ LIGHT = dict(DARK, card="#ffffff", titlebar="#f6f8fa", border="#a9c4e4",
 
 MONO = "'Plex',ui-monospace,'SF Mono',Menlo,Consolas,monospace"
 
-# measured: language bytes across all 30 public repos (github api, 2026-09)
+# measured: language bytes across all 30 public repos (github api, 2026-09);
+# csharp/java are also-used but below the measured cutoff — no pct shown.
 STACK = [
     ("typescript", "TypeScript", "60"), ("python", "Python", "13"),
     ("javascript", "JavaScript", "13"), ("swift", "Swift", "2"),
     ("cplusplus", "C++", "2"), ("rust", "Rust", "1"),
     ("html5", "HTML", "1"), ("c", "C", "1"),
+    ("csharp", "C#", ""), ("java", "Java", ""),
 ]
 
-# agent-stack canon: mirrors the token dashboard (BY TOOL usage order + TOP
-# MODELS families); when the two disagree, fix this line, not the dashboard.
-AGENT_STACK_EN = ("also C# / Java  |  agent stack: Codex / Zcode / Opencode / "
-                  "Claude Code  |  models: GLM / GPT / DeepSeek / MiniMax")
+# tools row: everyday infra around the languages — same grid, no pct. mlx
+# has no vector anywhere (not in simple-icons, no official asset), so it
+# gets a TS-style letter badge like the Z.ai mark.
+TOOLS = [
+    ("docker", "Docker"), ("mlx", "MLX"), ("pytorch", "PyTorch"),
+    ("langgraph", "LangGraph"), ("nodedotjs", "Node.js"),
+]
+
+# simple-icons keeps losing brands to takedowns: openai left in v10, java in
+# v7, csharp in v13 — pin the last release shipping each; the rest come from
+# the live CDN.
+ICON_URL_OVERRIDES = {
+    "openai": "https://cdn.jsdelivr.net/npm/simple-icons@9.21.0/icons/openai.svg",
+    "csharp": "https://cdn.jsdelivr.net/npm/simple-icons@12.4.0/icons/csharp.svg",
+    "java": "https://cdn.jsdelivr.net/npm/simple-icons@6.4.0/icons/java.svg",
+}
+
+# models row canon: mirrors the token dashboard's TOP MODELS families (kimi
+# and muse both appear in real usage: kimi-k3, muse-spark-*); when the two
+# disagree, fix this line, not the dashboard. zai is the official badge from
+# z-cdn.chatglm.cn/z-ai/static/logo.svg (30x30: rounded square + knocked-out
+# Z), redrawn in card colors like the TS badge.
+AI_MODELS = [
+    ("zai", "Z.ai"), ("openai", "GPT"), ("claude", "Claude"),
+    ("deepseek", "DeepSeek"), ("minimax", "MiniMax"),
+    ("kimi", "Kimi"), ("meta", "Muse"),
+]
+ZAI_SQUARE = ("M24.51,28.51H5.49c-2.21,0-4-1.79-4-4V5.49c0-2.21,1.79-4,4-4h19.03"
+              "c2.21,0,4,1.79,4,4v19.03C28.51,26.72,26.72,28.51,24.51,28.51z")
+ZAI_KNOCKOUT = (
+    "M15.47,7.1l-1.3,1.85c-0.2,0.29-0.54,0.47-0.9,0.47h-7.1V7.09C6.16,7.1,15.47,7.1,15.47,7.1z",
+    "M14.53,22.91l1.31-1.86c0.2-0.29,0.54-0.47,0.9-0.47h7.09v2.33H14.53z",
+)
+ZAI_DIAG = "24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"
 
 PET = {
     "name": "miku",
@@ -117,7 +150,7 @@ STR = {
         pet_mood="mood: idle · now: singing in the terminal",
         pet_open="> open in browser: ",
         stack_cap="by bytes · 30 public repos",
-        agent_stack=AGENT_STACK_EN,
+        models_label="MODELS",
         wall_aria="acfufu wall",
         wall_cap="leave a message",
         wall_hint="[wall] open a pre-filled issue - your message lands here",
@@ -130,7 +163,7 @@ STR = {
         pet_mood="心情：idle · 此刻：在终端里唱歌",
         pet_open="> 浏览器打开：",
         stack_cap="按字节 · 30 个公开仓库",
-        agent_stack="还有 C# / Java  |  agent 栈：Codex / Zcode / Opencode / Claude Code  |  模型：GLM / GPT / DeepSeek / MiniMax",
+        models_label="模型",
         wall_aria="acfufu 留言墙",
         wall_cap="留一句话",
         wall_hint="[wall] 打开预填 issue，留言会落到这里",
@@ -172,10 +205,12 @@ def font_face_css():
 
 
 def get_icon_paths():
+    ai_slugs = [slug for slug, _label in AI_MODELS if slug != "zai"]
+    tool_slugs = [slug for slug, _label in TOOLS if slug != "mlx"]
     icons = {}
-    for slug, _label, _pct in STACK:
-        svg = fetch(f"https://cdn.simpleicons.org/{slug}").decode()
-        m = re.search(r'\bd="([^"]+)"', svg)
+    for slug in [slug for slug, _label, _pct in STACK] + tool_slugs + ai_slugs:
+        url = ICON_URL_OVERRIDES.get(slug, f"https://cdn.simpleicons.org/{slug}")
+        m = re.search(r'\bd="([^"]+)"', fetch(url).decode())
         icons[slug] = m.group(1) if m else ""
     return icons
 
@@ -264,20 +299,50 @@ def build(theme, zh=False):
     s.append(f'<text x="{tx}" y="{y1 + TB_H + 24 + 4 * 20}" font-size="12.5" fill="{C["user"]}">'
              f'{esc(T["pet_open"])}{PET["url"]}</text>')
 
-    # ---- card 2: stack (y=230, h=268) ----
-    y2, h2 = 230, 268
+    # ---- card 2: stack (y=230, h=332) ----
+    y2, h2 = 230, 332
     card_rect(s, y2, h2)
     titlebar(s, y2, "cat stack", T["stack_cap"])
     icons = get_icon_paths()
-    centers_x = [140, 360, 580, 800]
-    rows_y = [y2 + 109, y2 + 200]
+    centers_x = (128, 304, 480, 656, 832)
     for idx, (slug, label, pct) in enumerate(STACK):
-        cx = centers_x[idx % 4]
-        cy = rows_y[idx // 4]
-        s.append(f'<g transform="translate({cx - 15},{cy - 50}) scale({30 / 24})">'
+        top = y2 + (54 if idx < 5 else 118)
+        cx = centers_x[idx % 5]
+        s.append(f'<g transform="translate({cx - 15},{top}) scale({30 / 24})">'
                  f'<path d="{icons[slug]}" fill="{C["user"]}" fill-rule="evenodd"/></g>')
-        s.append(f'<text class="stlab" x="{cx}" y="{cy}" text-anchor="middle">{esc(label)} {pct}%</text>')
-    s.append(f'<text class="agst" x="14" y="{y2 + 248}">{esc(T["agent_stack"])}</text>')
+        text = f"{label} {pct}%" if pct else label
+        s.append(f'<text class="stlab" x="{cx}" y="{top + 47}" text-anchor="middle">{esc(text)}</text>')
+    for idx, (slug, label) in enumerate(TOOLS):
+        top = y2 + 182
+        cx = centers_x[idx % 5]
+        if slug == "mlx":
+            s.append(f'<rect x="{cx - 15}" y="{top}" width="30" height="30" rx="6" '
+                     f'fill="{C["user"]}"/>')
+            s.append(f'<text x="{cx}" y="{top + 18.5}" font-size="9.5" font-weight="700" '
+                     f'fill="{C["card"]}" text-anchor="middle" letter-spacing="0.3">MLX</text>')
+        else:
+            s.append(f'<g transform="translate({cx - 15},{top}) scale({30 / 24})">'
+                     f'<path d="{icons[slug]}" fill="{C["user"]}" fill-rule="evenodd"/></g>')
+        s.append(f'<text class="stlab" x="{cx}" y="{top + 47}" text-anchor="middle">{esc(label)}</text>')
+    s.append(f'<line x1="20" y1="{y2 + 254}" x2="{CARD_X + CARD_W - 20}" y2="{y2 + 254}" '
+             f'stroke="{C["border"]}" stroke-dasharray="5 6"/>')
+    # models row: brand marks under the dashed divider; Z.ai drawn as its
+    # official badge (rounded square + knocked-out Z), 30x30 source fitted
+    # to the same 24px box as the other marks
+    for (slug, label), cx in zip(AI_MODELS,
+                                 (156, 264, 372, 480, 588, 696, 804)):
+        if slug == "zai":
+            s.append(f'<g transform="translate({cx - 12},{y2 + 266}) '
+                     f'scale({24 / 27.02}) translate(-1.49,-1.49)">'
+                     f'<path d="{ZAI_SQUARE}" fill="{C["user"]}"/>'
+                     f'<polygon points="{ZAI_DIAG}" fill="{C["card"]}"/>'
+                     + "".join(f'<path d="{d}" fill="{C["card"]}"/>' for d in ZAI_KNOCKOUT)
+                     + "</g>")
+        else:
+            s.append(f'<g transform="translate({cx - 12},{y2 + 266})">'
+                     f'<path d="{icons[slug]}" fill="{C["user"]}" fill-rule="evenodd"/></g>')
+        s.append(f'<text class="stlab" x="{cx}" y="{y2 + 307}" text-anchor="middle">{esc(label)}</text>')
+    s.append(f'<text class="snlab" x="20" y="{y2 + 307}">{esc(T["models_label"])}</text>')
 
     s.append("</svg>")
     return "\n".join(s)
