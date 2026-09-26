@@ -1158,18 +1158,27 @@ README_FILES = ("README.md", "README.zh-CN.md")
 # (属性, 文件名)：README 里引用的图片（GitHub 重写相对路径时保留 query）。
 # 画像卡与 wall 卡纳入 bump：它们由 wall 管线低频再生成，camo 缓存同样按 URL 命中。
 _README_IMGS = (
+    # 每张卡三个引用：<source dark srcset> / <source light srcset> /
+    # <img src=dark 兜底>。light 也是 srcset（曾误写为 src 导致 light 引用
+    # 永远吃不到 cache-bust）；兜底 img 用 dark 的 URL，也要一起 bump。
     ("srcset", "token-stats-dark.svg"),
-    ("src", "token-stats-light.svg"),
+    ("srcset", "token-stats-light.svg"),
+    ("src", "token-stats-dark.svg"),
     ("srcset", "token-stats-zh-dark.svg"),
-    ("src", "token-stats-zh-light.svg"),
+    ("srcset", "token-stats-zh-light.svg"),
+    ("src", "token-stats-zh-dark.svg"),
     ("srcset", "assets/profile-dark.svg"),
-    ("src", "assets/profile-light.svg"),
+    ("srcset", "assets/profile-light.svg"),
+    ("src", "assets/profile-dark.svg"),
     ("srcset", "assets/profile-zh-dark.svg"),
-    ("src", "assets/profile-zh-light.svg"),
+    ("srcset", "assets/profile-zh-light.svg"),
+    ("src", "assets/profile-zh-dark.svg"),
     ("srcset", "assets/wall-dark.svg"),
-    ("src", "assets/wall-light.svg"),
+    ("srcset", "assets/wall-light.svg"),
+    ("src", "assets/wall-dark.svg"),
     ("srcset", "assets/wall-zh-dark.svg"),
-    ("src", "assets/wall-zh-light.svg"),
+    ("srcset", "assets/wall-zh-light.svg"),
+    ("src", "assets/wall-zh-dark.svg"),
 )
 
 

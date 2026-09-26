@@ -1,19 +1,19 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1790384050">
-  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg">
-  <img src="assets/profile-dark.svg" width="100%" alt="acfufu: ai-native dev tools, a pixel pet, a snake eating commits, and a guestbook.">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1790389434">
+  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg?v=1790389434">
+  <img src="assets/profile-dark.svg?v=1790389434" width="100%" alt="acfufu: ai-native dev tools, a pixel pet, a snake eating commits, and a guestbook.">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1790384050">
-  <source media="(prefers-color-scheme: light)" srcset="token-stats-light.svg">
-  <img src="token-stats-dark.svg" width="100%" alt="ai token usage">
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1790389434">
+  <source media="(prefers-color-scheme: light)" srcset="token-stats-light.svg?v=1790389434">
+  <img src="token-stats-dark.svg?v=1790389434" width="100%" alt="ai token usage">
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-dark.svg?v=1790384050">
-  <source media="(prefers-color-scheme: light)" srcset="assets/wall-light.svg">
-  <img src="assets/wall-dark.svg" width="100%" alt="acfufu wall — leave a message">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-dark.svg?v=1790389434">
+  <source media="(prefers-color-scheme: light)" srcset="assets/wall-light.svg?v=1790389434">
+  <img src="assets/wall-dark.svg?v=1790389434" width="100%" alt="acfufu wall — leave a message">
 </picture>
 
 `→ reach ` [farrell-z.github.io](https://farrell-z.github.io) · [github.com/Acfufu](https://github.com/Acfufu)<br>
