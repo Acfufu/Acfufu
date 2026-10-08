@@ -904,7 +904,10 @@ def svg_card(r, dark=True, zh=False):
     # 踩尾原步会让蛇身不再是 route 的连续切片，不能按切片偷懒）
     intervals, open_iv = {}, {}
     body, prev = deque(), set()
+    swaps = []  # 踩尾瞬间：头进格 == 同拍弹出的尾格（该格连续占用，区间不断开）
     for s in range(n):
+        if body and route[s] == body[0]:
+            swaps.append(s)
         body.append(route[s])
         if pops[s]:
             body.popleft()
@@ -921,19 +924,48 @@ def svg_card(r, dark=True, zh=False):
     snk_head, snk_flash, snk_body = PAL["snake"]
     snk_old1, snk_old2 = PAL["snake_tail"]
     RAMP = ((1, snk_flash), (5, snk_body), (13, snk_old1), (26, snk_old2))
+    # 脱困可读性三件套：踩尾段（连续踩尾 ±4 步窗口）内 A 身段幽灵化（向背景混 45%）、
+    # B 踩尾瞬间琥珀闪框（stroke 通道，与 fill 互不干扰）；C 踩尾瞬间头显形——
+    # 踩尾格连续占用不换区间，原渲染在此漏发头色事件，蛇头会"被身子吞掉"。
+    bg_hex = PAL["bg"]
+
+    def _ghost(c, k=0.45):
+        return "#" + "".join(f"{round(int(c[i:i + 2], 16) * (1 - k) + int(bg_hex[i:i + 2], 16) * k):02x}"
+                             for i in (1, 3, 5))
+    ramp_ghost = tuple((age, _ghost(col)) for age, col in RAMP)
+    _runs = []
+    for s in swaps:
+        if _runs and s - _runs[-1][1] <= 3:
+            _runs[-1][1] = s
+        else:
+            _runs.append([s, s])
+    _windows = [(max(0, a - 4), min(n, b + 4)) for a, b in _runs]
+
+    def _in_escape(a, b):
+        return any(a < wb and b > wa for wa, wb in _windows)
     snake_css = ["@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }"]
     for cr, ivs in intervals.items():
         base = HM[grid_cells[cr][2]]
         cls = f"m{cr[0]}_{cr[1]}"
         stops = [(0.0, base)]
+        swap_hits = [s for s in swaps if route[s] == cr]
         for a, b in ivs:
             post = PAL["track"] if eaten_at.get(cr, n) <= b else base
             pa = pct(a)
             stops.append((max(pa - 0.05, 0.0), None))  # 进格前保持原色
             stops.append((pa, snk_head))
-            for age, col in RAMP:  # 身体按入队年龄转暗：头亮尾暗
+            ramp = ramp_ghost if _in_escape(a, b) else RAMP
+            for age, col in ramp:  # 身体按入队年龄转暗：头亮尾暗（脱困窗口内转幽灵色）
                 if a + age < b:
                     stops.append((pct(a + age), col))
+            for s in [x for x in swap_hits if a <= x < b]:  # C：踩尾瞬间头显形，再按幽灵 ramp 衰老
+                ps = pct(s)
+                stops.append((max(ps - 0.05, 0.0), None))
+                stops.append((ps, snk_head))
+                ramp2 = ramp_ghost if _in_escape(s, s + 1) else RAMP
+                for age, col in ramp2:
+                    if s + age < b:
+                        stops.append((pct(s + age), col))
             if b < total:
                 pb = pct(b)
                 stops.append((max(pb - 0.05, 0.0), None))
@@ -946,8 +978,18 @@ def svg_card(r, dark=True, zh=False):
                 frames.append(f"{p:.3f}% {{ fill:{col}; }}")
                 last = col
         frames.append(f"100% {{ fill:{last}; }}")
+        anims = f"k{cls} {dur:.1f}s linear infinite"
+        if swap_hits:  # B：一格一组合并闪框（同格多段 stroke 动画会互相覆盖）
+            pts = [(0.0, "transparent")]
+            for s in swap_hits:
+                pts.append((max(pct(s) - 0.10, 0.0), "transparent"))
+                pts.append((pct(s), f"{PAL['acc']}; stroke-width: 2"))
+                pts.append((min(pct(s) + 0.12, 99.99), "transparent"))
+            kf = " ".join(f"{p:.3f}% {{ stroke: {c}; }}" for p, c in pts)
+            snake_css.append(f"@keyframes s{cls} {{ {kf} }}")
+            anims += f", s{cls} {dur:.1f}s linear infinite"
         snake_css.append(f"@keyframes k{cls} {{ {' '.join(frames)} }}\n"
-                         f".{cls} {{ animation: k{cls} {dur:.1f}s linear infinite; }}")
+                         f".{cls} {{ animation: {anims}; }}")
 
     # "$ tokens eaten" 前缀和沿新路由累计（吃掉的仍是全盘所有 token 格）
     pre, run = [0], 0
