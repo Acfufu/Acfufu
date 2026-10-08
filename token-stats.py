@@ -82,6 +82,14 @@ MODEL_NAMES = {
     "claude-sonnet-4-5": "Claude Sonnet 4.5",
     "glm-5.2": "GLM-5.2", "GLM-5.2": "GLM-5.2", "glm-5.1": "GLM-5.1",
     "glm-5.2-x": "GLM-5.2 X", "GLM-5-Turbo": "GLM-5 Turbo",
+    "glm-5.3": "GLM-5.3", "GLM-5.3": "GLM-5.3",
+    "glm-5.3-flash": "GLM-5.3 Flash", "GLM-5.3-Flash": "GLM-5.3 Flash",
+    "glm-5.3-flashx": "GLM-5.3 FlashX", "GLM-5.3-FlashX": "GLM-5.3 FlashX",
+    "deepseek-v4.1-flash": "DeepSeek V4.1 Flash",
+    "kimi-k3": "Kimi K3",
+    "gpt-6-astra": "GPT-6 Astra", "gpt-6-luna": "GPT-6 Luna", "gpt-6.1-sol": "GPT-6.1 Sol",
+    "claude-opus-5.5": "Claude Opus 5.5",
+    "hy4-preview-f": "Hunyuan Hy4 Preview",
     "kimi-k2.6": "Kimi K2.6", "mimo-v2.5": "MiMo V2.5",
     "gemini-3-flash-preview": "Gemini 3 Flash", "hy3": "Hunyuan Hy3",
     "qwen3.7-plus": "Qwen3.7 Plus",
@@ -89,7 +97,7 @@ MODEL_NAMES = {
 
 AGENT_COLORS = {
     "codex": "#6c63ff", "claude": "#51cf66", "opencode": "#22b8cf",
-    "gemini": "#4285F4", "other": "#8b949e",
+    "gemini": "#4285F4", "zcode": "#e64980", "other": "#8b949e",
 }
 
 # 终端卡视觉语言（与 scripts/gen_acfufu_card.py 同族）：等宽字体 + Plex 子集内嵌。
@@ -113,6 +121,21 @@ def _font_face_css():
 
 
 # ============ 定价 ============
+# LiteLLM 同名模型常有 N 家托管商条目（deepseek-v4-flash 19 个），索引按此确定性择一：
+# plain 无前缀 > 官方 provider 前缀 > 路径段少 > 字母序。不再 setdefault first-wins
+# （那等于按 JSON 文件顺序随机命中 sail/cloudflare 等转售价，且每次定价刷新可能漂移）。
+_OFFICIAL_PROVIDERS = ("zhipuai", "zai", "deepseek", "moonshot", "minimax",
+                       "anthropic", "openai", "google", "xai", "qwen", "dashscope")
+
+
+def _entry_rank(key):
+    if "/" not in key:
+        return (0, 0, key)
+    head = key.split("/", 1)[0]
+    pref = _OFFICIAL_PROVIDERS.index(head) if head in _OFFICIAL_PROVIDERS else 99
+    return (1, pref, key)
+
+
 def get_pricing():
     """LiteLLM 定价索引。联网拉最新 → 失败用缓存文件；返回 {模型段: 定价条目}"""
     data = None
@@ -120,6 +143,14 @@ def get_pricing():
         with urllib.request.urlopen(LITELLM_URL, timeout=8) as r:
             data = json.load(r)
         print("[info] 已联网获取 LiteLLM 最新定价", file=sys.stderr)
+        try:  # 原子写回缓存：此前只读不写，离线兜底全靠 tracker 代为维护
+            os.makedirs(os.path.dirname(PRICING_CACHE), exist_ok=True)
+            tmp = PRICING_CACHE + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(data, f)
+            os.replace(tmp, PRICING_CACHE)
+        except OSError:
+            pass
     except Exception as e:
         print(f"[warn] 联网拉取定价失败（{e}），用缓存 {PRICING_CACHE}", file=sys.stderr)
     if data is None:
@@ -129,23 +160,38 @@ def get_pricing():
         except Exception as e:
             print(f"[warn] 定价缓存不可用（{e}），成本按 0 计", file=sys.stderr)
             return {}
-    idx = {}
+    buckets = {}
     for k, v in data.items():
         if k in ("_meta", "sample_spec") or not isinstance(v, dict):
             continue
-        idx.setdefault(k.rsplit("/", 1)[-1].lower(), v)  # 按路径末段索引
-    return idx
+        buckets.setdefault(k.rsplit("/", 1)[-1].lower(), []).append(k)  # 按路径末段分桶
+    return {seg: data[min(keys, key=_entry_rank)] for seg, keys in buckets.items()}
+
+
+def model_canon(model):
+    """原始模型名 → 规范名：剥 provider 路径前缀与 openclaw 前缀（不改大小写）。
+
+    deepseek/deepseek-v4.1-flash 与 deepseek-v4.1-flash 是同一模型，不剥前缀会在
+    模型榜裂成两行、定价也查不到（LiteLLM 索引按路径末段）；zai_/zaicoding_ 同理。
+    """
+    m = (model or "").strip()
+    if "/" in m:
+        m = m.rsplit("/", 1)[-1]
+    if m.startswith("zaicoding_"):
+        m = m[len("zaicoding_"):]
+    elif m.startswith("zai_"):
+        m = m[len("zai_"):]
+    return m or "unknown"
 
 
 def price_key(model):
-    """queue 模型名 → 定价索引 key（LiteLLM 段名；'(L)' 后缀 = 本地兜底表）"""
-    m = (model or "").lower()
+    """模型名（原始或规范）→ 定价索引 key（LiteLLM 段名；'(L)' 后缀 = 本地兜底表）"""
+    m = model_canon(model).lower()
     return {
         "minimax-m2.7": "minimax-m2.7(L)", "minimax-m3": "minimax-m3(L)",
         "hy3": "hy3(L)", "qwen3.7-plus": "qwen3.7-plus(L)",
         "auto": "auto(L)", "unknown": "unknown(L)",
         "codex-auto-review": "gpt-5.6",     # 同族定价
-        "glm-5-turbo": "glm-5.1",           # 缓存无 turbo，用 5.1
         "glm-5.2-x": "glm-5.2",
     }.get(m, m)
 
@@ -219,7 +265,7 @@ def load_tracker():
     peak = {}
     for b in dedup.values():
         src = b.get("source") or "other"
-        mdl = b.get("model") or "unknown"
+        mdl = model_canon(b.get("model"))   # 规范键：前缀变体上游合并（榜与成本共用）
         inp = b.get("input_tokens", 0) or 0
         cached = b.get("cached_input_tokens", 0) or 0
         cc = b.get("cache_creation_input_tokens", 0) or 0
@@ -380,11 +426,12 @@ def aggregate():
     if result["qpd"]:
         spend = {}
         for mdl, c in ((tr.get("by_model_cost") or {}) if tr else {}).items():
-            disp = MODEL_NAMES.get(mdl, mdl)
+            disp = MODEL_NAMES.get(mdl, mdl)  # by_model_cost 已是 canon 键
             spend[disp] = spend.get(disp, 0.0) + c
         rows = []
         for mdl, (a, t) in result["qpd"]["per_model"].items():
-            disp = MODEL_NAMES.get(mdl, mdl)
+            cn = model_canon(mdl)
+            disp = MODEL_NAMES.get(cn, cn)
             rows.append({"model": disp, "accepted": a, "outcomes": t,
                          "spend": spend.get(disp, 0.0)})
         rows = [x for x in rows if x["outcomes"] > 0]
@@ -1073,7 +1120,7 @@ def svg_card(r, dark=True, zh=False):
              10.5, 400, "faint", num=True)
 
     # 右栏：模型（琥珀强调色）
-    rlabel_w, rpct_w = 126, 84
+    rlabel_w, rpct_w = 142, 84
     rtrack_x = rgt_x + rlabel_w
     rtrack_w = rgt_w - rlabel_w - rpct_w
     for i, (name, tok) in enumerate(r["models"][:6]):

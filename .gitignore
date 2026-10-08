@@ -40,3 +40,6 @@ CONTEXT.md
 scripts/gen_profile_svg.py
 scripts/gen_dahan_replica.py
 assets/replica-profile-*.svg
+
+# Video-agent-kit plugin workspace scratch
+.video_agent/
