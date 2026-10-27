@@ -5,7 +5,8 @@ token-stats.py: 生成 GitHub profile 的 AI token usage SVG 卡片 + 自包含�
 
 数据源（双层匹配 + LiteLLM 当前定价）：
   1. 主层 tracker: ~/.tokentracker/tracker/queue.jsonl（TokenTracker 逐小时记录）
-     - 数据源超集: codex / claude / opencode / gemini / workbuddy / zcode
+     - 数据源超集: codex / claude / opencode / gemini / workbuddy / zcode / qoder / trae 等
+       （不做白名单过滤，TokenTracker 新增来源自动计入）
      - 逐条含 input / cached / cache_creation / output / reasoning tokens + conversation_count
      - 缓存占比、输入输出拆分等统计直接由此计算
   2. 回退层 ccusage: 本机 CLI 会话聚合（tracker 文件缺失时使用）
@@ -62,7 +63,9 @@ LOCAL_PRICING = {
     "minimax-m2.7": (0.30, 1.20, 0.03, 0.0),
     "minimax-m3":   (1.00, 4.00, 0.10, 0.0),
     "hy3":          (0.50, 1.50, 0.05, 0.0),
+    "hy4-preview-f": (0.833, 2.50, 0.042, 0.833),  # 混元 Hy4 preview 官方 USD 价（TT curated-overrides），-f 无独立价沿用同族
     "qwen3.7-plus": (0.60, 2.40, 0.06, 0.0),
+    "free":         (0.0, 0.0, 0.0, 0.0),
     "auto":         (0.0, 0.0, 0.0, 0.0),
     "unknown":      (0.0, 0.0, 0.0, 0.0),
 }
@@ -187,11 +190,16 @@ def model_canon(model):
 def price_key(model):
     """模型名（原始或规范）→ 定价索引 key（LiteLLM 段名；'(L)' 后缀 = 本地兜底表）"""
     m = model_canon(model).lower()
+    if m.endswith("-free"):
+        return "free(L)"    # 免费 SKU 一律 $0，不继承付费母模型价（对齐 TT matcher #744）
     return {
         "minimax-m2.7": "minimax-m2.7(L)", "minimax-m3": "minimax-m3(L)",
-        "hy3": "hy3(L)", "qwen3.7-plus": "qwen3.7-plus(L)",
-        "auto": "auto(L)", "unknown": "unknown(L)",
+        "hy3": "hy3(L)", "hy4-preview-f": "hy4-preview-f(L)",
+        "qwen3.7-plus": "qwen3.7-plus(L)",
+        "auto": "auto(L)", "unknown": "unknown(L)", "free": "free(L)",
         "codex-auto-review": "gpt-5.6",     # 同族定价
+        "claude-opus-4-6-thinking": "claude-opus-4-6",  # thinking 变体同族定价
+        "gemini-3.8-flash-high": "gemini-3.8-flash",    # effort 后缀变体同族定价
         "glm-5.2-x": "glm-5.2",
     }.get(m, m)
 
@@ -229,12 +237,12 @@ def run_ccusage_json():
 
 
 def _normalize_row(b):
-    """复刻 TokenTracker local-api.normalizeQueueRow：legacy codex 行 input 含缓存需扣减；cursor 行 billable 补全"""
+    """复刻 TokenTracker local-api.normalizeQueueRow：legacy codex 行 input 含缓存需扣减；cursor/antigravity 行 billable 补全"""
     src = b.get("source") or ""
     inp, cached, out = (b.get("input_tokens", 0) or 0), (b.get("cached_input_tokens", 0) or 0), (b.get("output_tokens", 0) or 0)
     if src in ("codex", "every-code") and cached > 0 and inp >= cached and b.get("total_tokens") == inp + out:
         b = dict(b, input_tokens=inp - cached)   # legacy 行：input 含 cache read，总=输入+输出
-    if src == "cursor":
+    if src in ("cursor", "antigravity"):
         tot, bill = b.get("total_tokens", 0) or 0, b.get("billable_total_tokens", 0) or 0
         if tot > 0 and bill < tot:
             b = dict(b, billable_total_tokens=tot)

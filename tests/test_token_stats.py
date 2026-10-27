@@ -53,12 +53,20 @@ class TestPriceKey(unittest.TestCase):
 
     def test_alias_mapping(self):
         self.assertEqual(token_stats.price_key("codex-auto-review"), "gpt-5.6")
-        self.assertEqual(token_stats.price_key("glm-5-turbo"), "glm-5.1")
+        self.assertEqual(token_stats.price_key("claude-opus-4-6-thinking"), "claude-opus-4-6")
+        self.assertEqual(token_stats.price_key("gemini-3.8-flash-high"), "gemini-3.8-flash")
         self.assertEqual(token_stats.price_key("glm-5.2-x"), "glm-5.2")
+        # 已删别名的模型名直通：查不到价就无价，不误挂同族价
+        self.assertEqual(token_stats.price_key("glm-5-turbo"), "glm-5-turbo")
 
-    def test_unknown_passthrough_lowercased(self):
+    def test_passthrough_lowercased_and_unknown_fallback(self):
         self.assertEqual(token_stats.price_key("GPT-5.6"), "gpt-5.6")
-        self.assertEqual(token_stats.price_key(None), "")
+        self.assertEqual(token_stats.price_key(None), "unknown(L)")
+
+    def test_free_suffix_zero(self):
+        self.assertEqual(token_stats.price_key("deepseek-v4-flash-free"), "free(L)")
+        self.assertEqual(token_stats.price_key("muse-spark-1.2-contributor-free"), "free(L)")
+        self.assertEqual(token_stats.price_for({}, "x-preview-f-free"), (0.0, 0.0, 0.0, 0.0))
 
 
 class TestPriceFor(unittest.TestCase):
