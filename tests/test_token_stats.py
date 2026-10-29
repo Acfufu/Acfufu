@@ -31,6 +31,13 @@ class TestFmtTokens(unittest.TestCase):
         self.assertEqual(token_stats.fmt_tokens(5_000), "5K")
         self.assertEqual(token_stats.fmt_tokens(999), "999")
 
+    def test_carry_boundaries(self):
+        # 999999 不显示 "1000K"，进位为 1.0M（本轮新增边界，钉住）
+        self.assertEqual(token_stats.fmt_tokens(999_499), "999K")
+        self.assertEqual(token_stats.fmt_tokens(999_500), "1.0M")
+        self.assertEqual(token_stats.fmt_tokens(999_499_999), "999.5M")
+        self.assertEqual(token_stats.fmt_tokens(1_000), "1K")
+
 
 class TestEsc(unittest.TestCase):
     def test_escapes_xml_chars(self):
@@ -113,12 +120,26 @@ class TestNormalizeRow(unittest.TestCase):
         self.assertEqual(out["billable_total_tokens"], 120)
 
 
-class TestMedian(unittest.TestCase):
-    def test_odd(self):
-        self.assertEqual(token_stats._median([3, 1, 2]), 2)
+class TestTrunc(unittest.TestCase):
+    def test_truncates_with_ellipsis(self):
+        self.assertEqual(token_stats._trunc("short", 10), "short")
+        self.assertEqual(token_stats._trunc("claude-opus-4-6-thinking", 19),
+                         "claude-opus-4-6-th…")
+        self.assertEqual(len(token_stats._trunc("a" * 30, 10)), 10)
 
-    def test_even(self):
-        self.assertEqual(token_stats._median([1, 2, 3, 4]), 2.5)
+
+class TestSnakeRoute(unittest.TestCase):
+    def test_empty_board_returns_none(self):
+        self.assertIsNone(token_stats.plan_snake_route({}))
+
+    def test_only_food_cells_are_eaten(self):
+        cells = {(c, r): 1 for c in range(3) for r in range(3)}
+        route, eats, growth, pops, left = token_stats.plan_snake_route(cells)
+        self.assertEqual(left, 0)                        # 全清
+        self.assertEqual({cr for _, cr in eats}, set(cells))
+        self.assertEqual(len(eats), len(cells))
+        # route 内每个点都是棋盘格（蛇不出界）
+        self.assertTrue(all(cr in cells for cr in route))
 
 
 PRICING = {"gpt-5.6": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}
@@ -175,6 +196,47 @@ class TestLoadTracker(unittest.TestCase):
                         "billable_total_tokens": 18, "conversation_count": 1}),
         ])
         self.assertEqual(r["total_tokens"], 18)
+
+    def test_bad_type_rows_skipped_not_fatal(self):
+        # 结构坏行（null/数组/字符串）与字段坏类型（int model、int hour_start、
+        # str tokens、bool billable、NaN）都只跳过或按 0 计，不允许炸穿整条链路。
+        # 特别覆盖 _normalize_row 内部的跨类型比较路径（str input 且带 cached 字段、
+        # str billable）——旧版重构曾让这两类从"跳行"回归为 TypeError 炸穿。
+        r = self._run([
+            "null", "[1, 2]", '"just a string"',
+            json.dumps({"source": "codex", "model": 123, "hour_start": "2026-08-01T01:00:00+08:00",
+                        "input_tokens": "10", "output_tokens": 5, "total_tokens": 15}),
+            json.dumps({"source": "codex", "model": "gpt-5.6", "hour_start": 999,
+                        "input_tokens": 10, "output_tokens": 5, "total_tokens": 15}),
+            json.dumps({"source": "codex", "model": "gpt-5.6", "hour_start": "2026-08-01T05:00:00+08:00",
+                        "input_tokens": 100, "output_tokens": 50, "total_tokens": 150,
+                        "billable_total_tokens": True}),
+            json.dumps({"source": "codex", "model": "gpt-5.6", "hour_start": "2026-08-01T07:00:00+08:00",
+                        "input_tokens": "10", "cached_input_tokens": 5, "output_tokens": 5,
+                        "total_tokens": 20}),
+            json.dumps({"source": "cursor", "model": "gpt-5.6",
+                        "total_tokens": 100, "billable_total_tokens": "60"}),
+            json.dumps({"source": "x", "model": "m", "total_tokens": float("nan")}),
+        ])
+        self.assertEqual(r["total_tokens"], 300)   # 15+15+150+20+100（bool billable 不采信、NaN 按 0）
+        self.assertEqual(r["by_agent"], {"codex": 200, "cursor": 100, "x": 0})
+        self.assertEqual(r["peak_day"], "2026-08-01")
+        self.assertEqual(r["peak_day_tokens"], 185)
+
+
+class TestZeroGuard(unittest.TestCase):
+    def test_zero_data_detection(self):
+        self.assertTrue(token_stats._zero_data({"total_tokens": 0, "daily": []}))
+        self.assertFalse(token_stats._zero_data({"total_tokens": 0, "daily": [("2026-08-01", 5)]}))
+        self.assertFalse(token_stats._zero_data({"total_tokens": 10, "daily": []}))
+        # 合法日期的全零值行会造出非空 daily：护栏必须仍判零（归零卡形态）
+        self.assertTrue(token_stats._zero_data({"total_tokens": 0, "daily": [("2026-08-01", 0), ("2026-08-02", 0)]}))
+
+
+class TestModelCanonDefense(unittest.TestCase):
+    def test_non_string_model(self):
+        self.assertEqual(token_stats.model_canon(123), "123")
+        self.assertEqual(token_stats.model_canon(None), "unknown")
 
 
 class TestLoadSessions(unittest.TestCase):
@@ -247,7 +309,7 @@ class TestAggregate(unittest.TestCase):
         self.assertEqual(r["total_cost"], 50.0 + 1348.07)
         self.assertEqual(r["conversations"], 10)
         self.assertEqual(r["by_agent"], {"OpenCode": 700, "Codex": 300})
-        self.assertEqual(r["models"], [("MiniMax M2.7", 1000), ("GPT-5.6", 0)])
+        self.assertEqual(r["models"], [("MiniMax M2.7", 1000)])   # 0-token 模型不占榜
         self.assertEqual(r["top_model"], "MiniMax M2.7")
         self.assertEqual(r["daily"], [("2026-08-01", 700), ("2026-08-02", 300)])
         self.assertEqual(r["period"], f"2026-08-01 ~ {datetime.date.today().isoformat()}")
@@ -276,10 +338,9 @@ class TestSvg(unittest.TestCase):
         "by_agent": {"opencode": 100000, "codex": 23456},
         "by_model": {"gpt-5.6": 100000},
         "models": [("GPT-5.6", 100000)],
-        "period_start": "2026-03", "peak_day": "2026-08-01", "peak_day_tokens": 50000,
+        "period_start": "2026-03",
         "daily": [("2026-08-01", 50000), ("2026-08-02", 40000)],
         "stats": {"input": 80000, "output": 15000, "cached": 20000, "cc": 5000},
-        "top_model": "GPT-5.6",
     }
 
     def _today_window(self):

@@ -21,9 +21,11 @@ Content is Acfufu's: measured language shares (C#/Java appended as
 also-used, below the measured cutoff), the tools row (everyday infra), and
 the models row canon (mirrors the token dashboard's TOP MODELS families).
 """
+import getpass
 import json
 import re
 import sys
+import tempfile
 import urllib.request
 from pathlib import Path
 
@@ -32,7 +34,9 @@ from miku_frames import CELL as MCELL, FRAMES, PALETTE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
-CACHE = Path("/tmp/dahan-replica-cache")  # shared: plex fonts + icons
+# per-user cache：共享 /tmp 固定名会被其他本地账户投毒——字体 b64 会被整文件
+# 内嵌进公开 SVG（等于本地任意文件读外泄原语），图标 path 则可被注入涂改
+CACHE = Path(tempfile.gettempdir()) / f"dahan-replica-cache-{getpass.getuser()}"
 REPO_CACHE = ROOT / "assets" / "gen-cache"  # vendored copy so CI never needs the network
 
 W = 960
@@ -113,11 +117,6 @@ WALL_FILE = ROOT / "data" / "wall.json"
 WALL_SHOW = 2  # message rows that fit the standalone wall card
 
 
-def dwidth(s):
-    """Display columns; CJK counts double."""
-    return sum(2 if ord(ch) > 0x2E80 else 1 for ch in s)
-
-
 def truncate(s, cols):
     out, w = "", 0
     for ch in s:
@@ -133,9 +132,18 @@ def load_wall():
     if WALL_FILE.exists():
         try:
             data = json.loads(WALL_FILE.read_text())
-            return [(e["user"], e["msg"], e["date"]) for e in data]
         except Exception as e:
             print(f"[warn] {WALL_FILE}: {e}; using built-in WALL", file=sys.stderr)
+        else:
+            rows = []
+            for e in data:
+                # 逐条校验：坏条目跳过而非整体回退 built-in（那会让真实留言全部消失）
+                if isinstance(e, dict) and all(isinstance(e.get(k), str) and e[k]
+                                               for k in ("user", "msg", "date")):
+                    rows.append((e["user"], e["msg"], e["date"]))
+                else:
+                    print(f"[warn] {WALL_FILE}: skip invalid entry {e!r:.80}", file=sys.stderr)
+            return rows
     return WALL
 
 # UI strings per language; terminal commands (pets status miku, cat stack,
@@ -149,7 +157,7 @@ STR = {
         pet_states=f"{PET['states']} states · tags: {PET['tags']}",
         pet_mood="mood: idle · now: singing in the terminal",
         pet_open="> open in browser: ",
-        stack_cap="by bytes · 30 public repos",
+        stack_cap="by bytes · 30 public repos",  # 一次性测量（2026-09 github api），改行前先复测
         models_label="MODELS",
         wall_aria="acfufu wall",
         wall_cap="leave a message",
@@ -210,8 +218,14 @@ def get_icon_paths():
     icons = {}
     for slug in [slug for slug, _label, _pct in STACK] + tool_slugs + ai_slugs:
         url = ICON_URL_OVERRIDES.get(slug, f"https://cdn.simpleicons.org/{slug}")
-        m = re.search(r'\bd="([^"]+)"', fetch(url).decode())
-        icons[slug] = m.group(1) if m else ""
+        try:
+            m = re.search(r'\bd="([^"]+)"', fetch(url).decode())
+            icons[slug] = m.group(1) if m else ""
+        except Exception as e:
+            # 单个图标失败不炸整条 wall 管线（否则 8 张卡全部停更、issue 悬死）：
+            # gen-cache 已覆盖全部所需图标，此路仅新图标/CDN 变故才走
+            print(f"[warn] icon {slug}: {e}", file=sys.stderr)
+            icons[slug] = ""
     return icons
 
 
@@ -366,7 +380,7 @@ def build_wall(theme, zh=False):
     s.append(f'<text class="snlab" x="196" y="{y + 58}">{esc(T["wall_hint"])}</text>')
     for i, (user, msg, date) in enumerate(load_wall()[-WALL_SHOW:]):
         s.append(f'<text class="wmsg" x="26" y="{y + 80 + i * 17}">'
-                 f'@{esc(truncate(user, 20))}: {esc(truncate(msg, 40))}  ({esc(date)})</text>')
+                 f'@{esc(truncate(user, 20))}: {esc(truncate(msg, 40))}  ({esc(truncate(date, 12))})</text>')
     s.append("</svg>")
     return "\n".join(s)
 

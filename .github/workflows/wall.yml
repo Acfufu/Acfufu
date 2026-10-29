@@ -2,7 +2,7 @@ name: wall
 
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened]
 
 concurrency:
   group: wall
@@ -29,7 +29,7 @@ jobs:
               return;
             }
             const msg = m[1]
-              .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u2028\u2029\ufeff]/g, '')
+              .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2028\u2029\u2060-\u2064\u00ad\ufeff\ufe00-\ufe0f]/g, '')
               .replace(/\s+/g, ' ')
               .trim();
             let out = '', w = 0;
@@ -126,7 +126,27 @@ jobs:
             assets/wall-zh-dark.svg assets/wall-zh-light.svg \
             data/wall.json README.md README.zh-CN.md
           git commit -m "wall: message from @${{ steps.parse.outputs.user }}"
-          git push
+          # 本地 token-stats daemon 会与本次推送竞争：被拒先 rebase 再重试。
+          # -X theirs（rebase 语义 = 本次重放的 wall 提交）——wall 的 v= 时间戳更新，冲突行必须获胜
+          for i in 1 2 3; do
+            if git push origin HEAD; then exit 0; fi
+            git fetch origin || true
+            git rebase --autostash -X theirs origin/main || git rebase --abort || true
+            sleep 10
+          done
+          exit 1
+
+      - name: Notify on failure
+        if: failure() && steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: 'wall update failed - please reopen this issue to retry :repeat:'
+            });
 
       - name: Close wall issue
         if: steps.parse.outputs.skip == 'false' && steps.parse.outputs.message != ''

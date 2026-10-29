@@ -18,16 +18,21 @@ token-stats.py: 生成 GitHub profile 的 AI token usage SVG 卡片 + 自包含�
 用法:
   python3 token-stats.py                # 立即同步 GitHub + 启动后台守护（默认每 24h 自动同步）
   python3 token-stats.py --once         # 只同步一次，不启动守护
-  python3 token-stats.py --once --no-sync  # 只生成 SVG，不提交/推送（本地预览）
+  python3 token-stats.py --once --no-sync  # 只生成 SVG，不提交/推送（本地预览；若守护周期恰在刷新则跳过本轮）
   python3 token-stats.py --stop         # 停止后台守护
   python3 token-stats.py --json         # 输出聚合 JSON
   python3 token-stats.py --interval 6   # 自定义守护间隔（小时）
+  python3 token-stats.py --out x.svg    # 自定义别名卡输出（默认 token-stats.svg = 英文 dark 版）
 
 守护特性（零系统级痕迹）：
   - 不注册 crontab / launchd；重启后自动停，不留任何系统文件
   - PID/日志在仓库内（.token-stats-daemon.pid / .token-stats-daemon.log），删仓库即全部消失
   - 单实例互斥：fcntl.flock 内核级锁，并发启动也只会有一个守护（无 TOCTOU 竞态）
   - 每 60s 自检仓库是否还在；删仓库 → 1 分钟内自行退出
+  - 刷新互斥：单轮刷新持 .token-stats-refresh.lock，daemon 周期与前台 --once 不并发写
+  - 零值护栏：聚合结果全零（数据源异常）时拒绝写盘/推送，不会把公开卡覆写成归零卡
+  - 自愈：推送失败 rebase 对齐远端后退避重试；周期失败连续计数并醒目记日志
+  - 页脚 [LIVE]/[SYNC] 如实标注守护是否在跑（flock 探测，不硬编码）
 
 依赖: 无第三方 Python 包（联网定价失败自动用缓存）
 """
@@ -46,7 +51,6 @@ import subprocess
 import sys
 import time
 import urllib.request
-from bisect import bisect_right
 from collections import deque
 
 # ============ 配置 ============
@@ -59,6 +63,9 @@ OUTCOMES_FILE = os.path.expanduser("~/.tokentracker/tracker/auto-outcomes.jsonl"
 OUT_DEFAULT = "token-stats.svg"
 
 # 本地兜底定价 $/M tokens（LiteLLM 未收录：国产/特殊模型，估算）
+# 有意不补价（确定性原则：LiteLLM/官方均无公开价，不编估值）：ox-alpha、nemotron-3-ultra、
+# gemma-4-e4b、qwen3-vl-30b；gpt-5.3-codex-spark（订阅制，LiteLLM 条目价格字段全 null）；
+# space-bunny（无任何官方价）。后续复查勿再当缺陷报；要计价需先由用户定口径。
 LOCAL_PRICING = {
     "minimax-m2.7": (0.30, 1.20, 0.03, 0.0),
     "minimax-m3":   (1.00, 4.00, 0.10, 0.0),
@@ -90,7 +97,8 @@ MODEL_NAMES = {
     "glm-5.3-flashx": "GLM-5.3 FlashX", "GLM-5.3-FlashX": "GLM-5.3 FlashX",
     "deepseek-v4.1-flash": "DeepSeek V4.1 Flash",
     "kimi-k3": "Kimi K3",
-    "gpt-6-astra": "GPT-6 Astra", "gpt-6-luna": "GPT-6 Luna", "gpt-6.1-sol": "GPT-6.1 Sol",
+    "gpt-6-astra": "GPT-6 Astra", "gpt-6-luna": "GPT-6 Luna",
+    "gpt-6.1-sol": "GPT-6.1 Sol", "gpt-6.1-terra": "GPT-6.1 Terra",
     "claude-opus-5.5": "Claude Opus 5.5",
     "hy4-preview-f": "Hunyuan Hy4 Preview",
     "kimi-k2.6": "Kimi K2.6", "mimo-v2.5": "MiMo V2.5",
@@ -148,12 +156,15 @@ def get_pricing():
         print("[info] 已联网获取 LiteLLM 最新定价", file=sys.stderr)
         try:  # 原子写回缓存：此前只读不写，离线兜底全靠 tracker 代为维护
             os.makedirs(os.path.dirname(PRICING_CACHE), exist_ok=True)
-            tmp = PRICING_CACHE + ".tmp"
+            tmp = f"{PRICING_CACHE}.{os.getpid()}.tmp"  # 带 pid：并发写 .tmp 固定名会互踩
             with open(tmp, "w") as f:
                 json.dump(data, f)
             os.replace(tmp, PRICING_CACHE)
         except OSError:
-            pass
+            try:
+                os.unlink(tmp)
+            except Exception:
+                pass
     except Exception as e:
         print(f"[warn] 联网拉取定价失败（{e}），用缓存 {PRICING_CACHE}", file=sys.stderr)
     if data is None:
@@ -177,7 +188,7 @@ def model_canon(model):
     deepseek/deepseek-v4.1-flash 与 deepseek-v4.1-flash 是同一模型，不剥前缀会在
     模型榜裂成两行、定价也查不到（LiteLLM 索引按路径末段）；zai_/zaicoding_ 同理。
     """
-    m = (model or "").strip()
+    m = str(model or "").strip()
     if "/" in m:
         m = m.rsplit("/", 1)[-1]
     if m.startswith("zaicoding_"):
@@ -230,20 +241,29 @@ def run_ccusage_json():
             ["ccusage", "daily", "-j", "--no-color", "--by-agent"],
             capture_output=True, text=True, timeout=120,
         )
+        if out.returncode != 0:
+            tail = (out.stderr or "").strip().splitlines()[-3:]
+            print(f"[warn] ccusage 退出码 {out.returncode}：{' / '.join(tail) or '无 stderr'}", file=sys.stderr)
+            return None
         return json.loads(out.stdout)
     except (FileNotFoundError, json.JSONDecodeError, subprocess.TimeoutExpired) as e:
         print(f"[warn] ccusage 不可用（{e}）", file=sys.stderr)
         return None
 
 
+def _num(v):
+    """数据入口数值防御：JSONL 行字段类型不可信（str/bool/null/NaN/Inf 一律按 0 计），一行坏行不炸全链路"""
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) else 0
+
+
 def _normalize_row(b):
     """复刻 TokenTracker local-api.normalizeQueueRow：legacy codex 行 input 含缓存需扣减；cursor/antigravity 行 billable 补全"""
     src = b.get("source") or ""
-    inp, cached, out = (b.get("input_tokens", 0) or 0), (b.get("cached_input_tokens", 0) or 0), (b.get("output_tokens", 0) or 0)
-    if src in ("codex", "every-code") and cached > 0 and inp >= cached and b.get("total_tokens") == inp + out:
+    inp, cached, out = _num(b.get("input_tokens", 0)), _num(b.get("cached_input_tokens", 0)), _num(b.get("output_tokens", 0))
+    if src in ("codex", "every-code") and cached > 0 and inp >= cached and _num(b.get("total_tokens")) == inp + out:
         b = dict(b, input_tokens=inp - cached)   # legacy 行：input 含 cache read，总=输入+输出
     if src in ("cursor", "antigravity"):
-        tot, bill = b.get("total_tokens", 0) or 0, b.get("billable_total_tokens", 0) or 0
+        tot, bill = _num(b.get("total_tokens", 0)), _num(b.get("billable_total_tokens", 0))
         if tot > 0 and bill < tot:
             b = dict(b, billable_total_tokens=tot)
     return b
@@ -261,26 +281,37 @@ def load_tracker():
          "by_model_cost": {}, "period_start": None, "peak_day": None,
          "peak_day_tokens": 0, "by_day": {}}
     dedup = {}
-    for line in open(TRACKER_QUEUE):
-        try:
-            b = _normalize_row(json.loads(line))
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if not isinstance(b, dict):
-            continue
-        key = (b.get("source") or "", b.get("model") or "", b.get("hour_start") or "")
-        dedup[key] = b                      # last-wins（sync 重发累计值，只留最新）
+    with open(TRACKER_QUEUE) as f:
+        for line in f:
+            try:
+                b = json.loads(line)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(b, dict):
+                continue                  # null/[1,2]/"str" 等结构坏行：先于 _normalize_row 拦下
+            try:
+                b = _normalize_row(b)
+            except (TypeError, AttributeError):
+                continue                  # 跨类型比较等残余坏形：跳行不炸链路
+            key = (str(b.get("source") or ""), str(b.get("model") or ""),
+                   str(b.get("hour_start") or ""))
+            dedup[key] = b                # last-wins（sync 重发累计值，只留最新）
     peak = {}
+    pdt = None                            # 最早 hour_start 的 aware datetime（代替混时区字符串比较）
     for b in dedup.values():
-        src = b.get("source") or "other"
+        src = str(b.get("source") or "other")
         mdl = model_canon(b.get("model"))   # 规范键：前缀变体上游合并（榜与成本共用）
-        inp = b.get("input_tokens", 0) or 0
-        cached = b.get("cached_input_tokens", 0) or 0
-        cc = b.get("cache_creation_input_tokens", 0) or 0
-        out = b.get("output_tokens", 0) or 0
+        inp = _num(b.get("input_tokens"))
+        cached = _num(b.get("cached_input_tokens"))
+        cc = _num(b.get("cache_creation_input_tokens"))
+        out = _num(b.get("output_tokens"))
         bill = b.get("billable_total_tokens")
-        tot = bill if isinstance(bill, (int, float)) else (b.get("total_tokens") or 0)
-        conv = b.get("conversation_count", 0) or 0
+        tot = bill if isinstance(bill, (int, float)) and not isinstance(bill, bool) \
+            and math.isfinite(bill) else _num(b.get("total_tokens"))
+        conv = _num(b.get("conversation_count"))
+        # 负值钳 0：上游修正走 last-wins 整行替换，负数行只可能是脏数据，
+        # 放行会让 hero/占比/趋势全链路出现 "-100%" 式 poison
+        inp, cached, cc, out, conv, tot = (max(x, 0) for x in (inp, cached, cc, out, conv, tot))
 
         r["total_tokens"] += tot
         r["input"] += inp
@@ -299,26 +330,24 @@ def load_tracker():
             r["by_model_cost"][mdl] = r["by_model_cost"].get(mdl, 0.0) + c
 
         hs = b.get("hour_start")
-        if hs:
+        if isinstance(hs, str) and hs:
+            ldt = None
             try:
                 ldt = datetime.datetime.fromisoformat(hs.replace("Z", "+00:00")).astimezone()
                 day = ldt.date().isoformat()
                 liso = ldt.isoformat(timespec="minutes")
-            except ValueError:
+            except (ValueError, OverflowError, OSError):
+                # 年份越界等极值（如 9999-12-31 在东八区 .astimezone() 溢出）：退回按天取前缀
                 day, liso = hs[:10], hs
             peak[day] = peak.get(day, 0) + tot
-            if r["period_start"] is None or liso < r["period_start"]:
+            if ldt is not None and (pdt is None or ldt < pdt):
+                pdt = ldt
                 r["period_start"] = liso
     if peak:
         day, toks = max(peak.items(), key=lambda x: x[1])
         r["peak_day"], r["peak_day_tokens"] = day, toks
     r["by_day"] = peak
     return r
-
-
-def _median(a):
-    # stdlib 等价：排序取中位（奇数取中，偶数取两中位均值）
-    return statistics.median(a)
 
 
 def load_sessions():
@@ -328,25 +357,28 @@ def load_sessions():
         return None
     n = edit = fp = 0
     cpe, tpe = [], []
-    for line in open(SESSION_QUEUE):
-        try:
-            b = json.loads(line)
-        except (json.JSONDecodeError, TypeError):
-            continue
-        n += 1
-        if (b.get("edit_turns") or 0) > 0:
-            edit += 1
-            if b.get("first_pass"):
-                fp += 1
-            if b.get("cost_per_edit") is not None:
-                cpe.append(b["cost_per_edit"])
-            if b.get("tokens_per_edit") is not None:
-                tpe.append(b["tokens_per_edit"])
+    with open(SESSION_QUEUE) as f:
+        for line in f:
+            try:
+                b = json.loads(line)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(b, dict):
+                continue
+            n += 1
+            if _num(b.get("edit_turns")) > 0:
+                edit += 1
+                if b.get("first_pass"):
+                    fp += 1
+                for key, acc in (("cost_per_edit", cpe), ("tokens_per_edit", tpe)):
+                    v = b.get(key)
+                    if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v):
+                        acc.append(v)
     if n == 0:
         return None
     return {"sessions": n, "edit_sessions": edit, "first_pass": fp,
-            "cost_per_edit": _median(cpe) if cpe else None,
-            "tokens_per_edit": _median(tpe) if tpe else None}
+            "cost_per_edit": statistics.median(cpe) if cpe else None,
+            "tokens_per_edit": statistics.median(tpe) if tpe else None}
 
 
 def load_outcomes():
@@ -356,18 +388,22 @@ def load_outcomes():
         return None
     per = {}
     n = acc = 0
-    for line in open(OUTCOMES_FILE):
-        try:
-            b = json.loads(line)
-        except (json.JSONDecodeError, TypeError):
-            continue
-        mdl = b.get("model") or "unknown"
-        m = per.setdefault(mdl, [0, 0])
-        m[1] += 1
-        if b.get("accepted"):
-            m[0] += 1
-            acc += 1
-        n += 1
+    with open(OUTCOMES_FILE) as f:
+        for line in f:
+            try:
+                b = json.loads(line)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(b, dict):
+                continue
+            mdl = b.get("model")
+            mdl = mdl if isinstance(mdl, str) and mdl else "unknown"
+            m = per.setdefault(mdl, [0, 0])
+            m[1] += 1
+            if b.get("accepted"):
+                m[0] += 1
+                acc += 1
+            n += 1
     return {"outcomes": n, "accepted": acc, "per_model": per}
 
 
@@ -409,19 +445,26 @@ def aggregate():
             result["total_tokens"] = t.get("totalTokens", 0)
             result["total_cost"] = t.get("totalCost", 0.0)
             days = data.get("daily", [])
+            st_in = st_cached = st_out = st_cc = 0
             for day in days:
                 for a in day.get("agents", []):
-                    name = a.get("agent", "?")
-                    result["by_agent"][name] = result["by_agent"].get(name, 0) + a.get("totalTokens", 0)
+                    name = str(a.get("agent") or "?")
+                    result["by_agent"][name] = result["by_agent"].get(name, 0) + max(_num(a.get("totalTokens")), 0)
                     for mb in a.get("modelBreakdowns", []):
-                        mn = mb.get("modelName", "?")
-                        result["by_model"][mn] = result["by_model"].get(mn, 0) + (
-                            mb.get("inputTokens", 0) + mb.get("outputTokens", 0)
-                            + mb.get("cacheReadTokens", 0) + mb.get("cacheCreationTokens", 0))
+                        mn = str(mb.get("modelName") or "?")
+                        mi, mc = _num(mb.get("inputTokens")), _num(mb.get("cacheReadTokens"))
+                        mo, mcc = _num(mb.get("outputTokens")), _num(mb.get("cacheCreationTokens"))
+                        result["by_model"][mn] = result["by_model"].get(mn, 0) + mi + mc + mo + mcc
+                        st_in += mi
+                        st_cached += mc
+                        st_out += mo
+                        st_cc += mcc
+            # 回退分支也填 stats：否则 cpct 落 95.0 兜底，页脚伪造 "cached 95%"
+            result["stats"] = {"input": st_in, "output": st_out, "cached": st_cached, "cc": st_cc}
             if days:
                 result["period"] = f"{days[0].get('period', '?')} ~ {days[-1].get('period', '?')}"
                 result["period_start"] = (days[0].get("period") or "")[:7]
-                result["daily"] = sorted((d.get("period"), d.get("totalTokens", 0))
+                result["daily"] = sorted((d.get("period"), _num(d.get("totalTokens")))
                                          for d in days if d.get("period"))
 
     # cost 展示口径（用户确认）：本机 + 历史导出口径 $1.3K
@@ -436,10 +479,14 @@ def aggregate():
         for mdl, c in ((tr.get("by_model_cost") or {}) if tr else {}).items():
             disp = MODEL_NAMES.get(mdl, mdl)  # by_model_cost 已是 canon 键
             spend[disp] = spend.get(disp, 0.0) + c
-        rows = []
+        agg = {}   # outcomes 原始名先按 canon 归并：前缀/大小写变体不再各自领走全额 spend
         for mdl, (a, t) in result["qpd"]["per_model"].items():
-            cn = model_canon(mdl)
-            disp = MODEL_NAMES.get(cn, cn)
+            disp = MODEL_NAMES.get(model_canon(mdl), model_canon(mdl))
+            m = agg.setdefault(disp, [0, 0])
+            m[0] += a
+            m[1] += t
+        rows = []
+        for disp, (a, t) in agg.items():
             rows.append({"model": disp, "accepted": a, "outcomes": t,
                          "spend": spend.get(disp, 0.0)})
         rows = [x for x in rows if x["outcomes"] > 0]
@@ -449,12 +496,13 @@ def aggregate():
         rows.sort(key=lambda x: (x["cost_per"] is None, x["cost_per"] or 0))
         result["qpd"]["rows"] = rows[:6]
 
-    # 模型榜（官方命名 + 排序）
+    # 模型榜（官方命名 + 排序；0-token 模型不占槽位，与左栏工具口径一致）
     merged = {}
     for mn, tok in result["by_model"].items():
         name = MODEL_NAMES.get(mn, mn)
         merged[name] = merged.get(name, 0) + tok
-    result["models"] = sorted(merged.items(), key=lambda x: -x[1])[:10]
+    result["models"] = sorted(((n, t) for n, t in merged.items() if t > 0),
+                              key=lambda x: -x[1])[:10]
     if result["models"]:
         result["top_model"] = result["models"][0][0]
 
@@ -469,15 +517,20 @@ def aggregate():
 
 # ============ SVG 生成 ============
 def fmt_tokens(n):
-    if n >= 1e9: return f"{n/1e9:.1f}B"
-    if n >= 1e6: return f"{n/1e6:.1f}M"
-    if n >= 1e3: return f"{n/1e3:.0f}K"
+    if n >= 999.5e6: return f"{n/1e9:.1f}B"   # 999999999 进位为 1.0B，不显示 "1000.0M"
+    if n >= 999_500: return f"{n/1e6:.1f}M"   # 999999 进位为 1.0M，不显示 "1000K"
+    if n >= 999.5: return f"{n/1e3:.0f}K"
     return str(n)
 
 
 def esc(s):
     # stdlib 等价：html.escape(quote=False) 只转义 & < >，引号原样
     return html.escape(s, quote=False)
+
+
+def _trunc(s, cols):
+    """等宽标签截断：超宽截到 cols 字符并加省略号（12px Plex ≈ 7.2px/字符）"""
+    return s if len(s) <= cols else s[:cols - 1] + "…"
 
 
 def _nice_max(v):
@@ -510,7 +563,7 @@ def trend_section(r, PAL, L, x0, x1, yo=0):
 
     # 窗口收缩：仅最近 30 天（chart 范围；拆分明细行仍为全时段）
     lo = today - datetime.timedelta(days=29)
-    daily = {d: v for d, v in daily.items() if d >= lo}
+    daily = {d: v for d, v in daily.items() if lo <= d <= today}
     start = lo
     span_days = max((today - start).days, 1)
 
@@ -574,9 +627,10 @@ def trend_section(r, PAL, L, x0, x1, yo=0):
         fill = PAL["acc_hi"] if d == pk_day else f"url(#{grad_id})"
         out.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{plot_bot - y:.1f}" rx="1" fill="{fill}"/>')
 
-    # 叠加折线：7日滚动均线（平滑稀疏日尖峰），acc_hi 2px 圆角
-    rpts = " ".join(f"{px(d):.1f},{py(roll[d]):.1f}" for d in days_sorted)
-    out.append(f'<polyline points="{rpts}" fill="none" stroke="{PAL["acc_hi"]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>')
+    # 叠加折线：7日滚动均线（平滑稀疏日尖峰），acc_hi 2px 圆角；无活跃日不输出空 points
+    if days_sorted:
+        rpts = " ".join(f"{px(d):.1f},{py(roll[d]):.1f}" for d in days_sorted)
+        out.append(f'<polyline points="{rpts}" fill="none" stroke="{PAL["acc_hi"]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>')
 
     # 峰值日标注（窗口内重算；圆点 + 日期 + 数值）
     if pk_day:
@@ -624,7 +678,8 @@ def plan_snake_route(cells, base_len=3, caps=(40, 36, 32, 28, 24, 20, 16, 12)):
     """觅食式路径：像玩家操纵的蛇逐格狩猎，而不是固定扫描线。
 
     cells: {(col,row): 亮度级别}，只含真实渲染的格子，级别>0 视为食物。
-    每轮选目标：离蛇头最近者优先、同距偏好更亮的格子；对前 24 个候选逐个
+    每轮选目标：离蛇头最近者优先、同距偏好更暗的格子（亮度进排序键是 +2*级别
+    惩罚——亮格留到最后被吃，与热力图衰减层次一致）；对前 24 个候选逐个
     BFS 最短路（蛇身为障碍），走过去途中每吃一格身体长一节。每步落子前
     检查"走完后尾巴仍可达"（BFS 头→尾）防自困；被自己围死时改追尾巴
     腾空间。上限 cap 从大到小搜索，取还能吃完全盘的最大身长。
@@ -758,9 +813,14 @@ def plan_snake_route(cells, base_len=3, caps=(40, 36, 32, 28, 24, 20, 16, 12)):
     return route, eats, growth, pops, left
 
 
-def svg_card(r, dark=True, zh=False):
+def svg_card(r, dark=True, zh=False, live=None):
     """生成 token 卡片 SVG：终端卡外壳（同画像卡视觉语言）+ 英雄头部 + 活跃热力图
-    + 双栏条形图（工具/模型）+ 使用趋势 + 页脚（含 daemon LIVE 叙事）。"""
+    + 双栏条形图（工具/模型）+ 使用趋势 + 页脚（含 daemon LIVE 叙事）。
+
+    live=None 时按 PID 文件锁探测守护是否真在跑；页脚只如实标注，
+    不再硬编码 [LIVE]（守护死后卡片谎报在跑正是 12 天停更不被察觉的原因）。"""
+    if live is None:
+        live = daemon_running()
     W, H = 960, 792
     CARD_X, CARD_W, R, TB_H = 4, 952, 12, 38
     PAD = 32
@@ -774,7 +834,7 @@ def svg_card(r, dark=True, zh=False):
     inp, out = st.get("input", 0), st.get("output", 0)
     cached, cc = st.get("cached", 0), st.get("cc", 0)
     denom = inp + out + cached + cc
-    cpct = cached / denom * 100 if denom else 95.0
+    cpct = cached / denom * 100 if denom else 0.0   # 无分量数据显 0%，不伪造 "cached 95%"
     conv_k = r.get("conversations", 214000) / 1000
     start = r.get("period_start") or "2026-03"
     try:
@@ -815,7 +875,7 @@ def svg_card(r, dark=True, zh=False):
                  trend="使用趋势", c_in="输入", c_cached="缓存读", c_out="输出", c_cc="缓存写",
                  lg_bar="每日用量", lg_avg="7日均值", lg_peak="峰值日",
                  foot_stats=f"输入 {fmt_tokens(inp)} · 输出 {fmt_tokens(out)} · 缓存 {cpct:.0f}% · {conv_k:.0f}K 对话",
-                 live_note="[LIVE] 守护进程在跑 · 每日刷新",
+                 live_note="[LIVE] 守护进程在跑 · 每日刷新" if live else "[SYNC] 手动同步 · 守护未在跑",
                  foot_updated="更新于", more_tools="其余工具",
                  wd={1: "一", 3: "三", 5: "五"})
         def mon_label(m):
@@ -831,7 +891,7 @@ def svg_card(r, dark=True, zh=False):
                  trend="USAGE TREND", c_in="INPUT", c_cached="CACHED", c_out="OUTPUT", c_cc="CACHE WRITE",
                  lg_bar="Daily", lg_avg="7d avg", lg_peak="Peak",
                  foot_stats=f"input {fmt_tokens(inp)} · output {fmt_tokens(out)} · cached {cpct:.0f}% · {conv_k:.0f}K conversations",
-                 live_note="[LIVE] daemon on · regen daily",
+                 live_note="[LIVE] daemon on · regen daily" if live else "[SYNC] manual sync · daemon off",
                  foot_updated="updated", more_tools="more tools",
                  wd={1: "Mon", 3: "Wed", 5: "Fri"})
         def mon_label(m):
@@ -913,6 +973,9 @@ def svg_card(r, dark=True, zh=False):
     while ws <= today_d:
         cols.append(ws)
         ws += datetime.timedelta(days=7)
+    MAX_COLS = (CW - 72) // pitch  # 列上限：预留右侧 "TODAY 今日计数" 的 72px，防计数器越出卡体
+    if len(cols) > MAX_COLS:       # 全历史越限时滚动保留最近窗口（13px/列 ≈ 2027 年触顶）
+        cols = cols[-MAX_COLS:]
     ncol = len(cols)
     hm_w = ncol * pitch
     grid_x = X0 + (CW - hm_w) // 2
@@ -1085,14 +1148,15 @@ def svg_card(r, dark=True, zh=False):
 
     # 蛇层样式 + "$ tokens eaten" 继电器计数（与蛇进度同周期同步；与图例同线靠左）
     lines.append(f"<style>{''.join(snake_css)}</style>")
-    lines.append(f'<text x="{X0}" y="{lg_y + 8}" font-size="9.5" font-weight="500" '
-                 f'font-family="{MONO}" fill="{PAL["muted"]}">{esc(L["eaten_lbl"])}</text>')
-    for k in range(NC):
-        i0, i1 = round(k * n / NC), round((k + 1) * n / NC)
-        if i1 <= i0:
-            continue
-        lines.append(f'<text class="r{k}" x="{X0 + 108}" y="{lg_y + 8}" font-size="9.5" font-weight="600" '
-                     f'font-family="{MONO}" fill="{PAL["user"]}">{fmt_tokens(pre[i1])}/{tt}</text>')
+    if n:   # 无食物（route 空）时不渲染悬空的 eaten 标签
+        lines.append(f'<text x="{X0}" y="{lg_y + 8}" font-size="9.5" font-weight="500" '
+                     f'font-family="{MONO}" fill="{PAL["muted"]}">{esc(L["eaten_lbl"])}</text>')
+        for k in range(NC):
+            i0, i1 = round(k * n / NC), round((k + 1) * n / NC)
+            if i1 <= i0:
+                continue
+            lines.append(f'<text class="r{k}" x="{X0 + 108}" y="{lg_y + 8}" font-size="9.5" font-weight="600" '
+                         f'font-family="{MONO}" fill="{PAL["user"]}">{fmt_tokens(pre[i1])}/{tt}</text>')
 
     # ===== 双栏：BY TOOL 条 | TOP MODELS 条（同构条形图） =====
     col_gap, left_w = 28, 400
@@ -1115,7 +1179,7 @@ def svg_card(r, dark=True, zh=False):
         pct = tok / total * 100 if total else 0
         bw = max(track_w * pct / 100, 2)
         color = AGENT_COLORS.get(name.lower(), "#8b949e")
-        text(X0, y0 + 10 + i * 26, _agent_disp(name), 12, 500, "text2")
+        text(X0, y0 + 10 + i * 26, _trunc(_agent_disp(name), 10), 12, 500, "text2")
         lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{track_w}" height="10" rx="3" class="track"/>')
         lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{color}" opacity="0.9"/>')
         text(X0 + left_w, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
@@ -1134,7 +1198,7 @@ def svg_card(r, dark=True, zh=False):
     for i, (name, tok) in enumerate(r["models"][:6]):
         pct = tok / total * 100 if total else 0
         bw = max(rtrack_w * pct / 100, 2)
-        text(rgt_x, y0 + 10 + i * 26, name, 12, 500, "text2")
+        text(rgt_x, y0 + 10 + i * 26, _trunc(name, 19), 12, 500, "text2")
         lines.append(f'<rect x="{rtrack_x}" y="{y0 + i * 26}" width="{rtrack_w}" height="10" rx="3" class="track"/>')
         lines.append(f'<rect x="{rtrack_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{PAL["acc"]}" opacity="0.9"/>')
         text(X1, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
@@ -1153,6 +1217,28 @@ def svg_card(r, dark=True, zh=False):
 
 
 # ============ main ============
+REFRESH_LOCK = os.path.join(REPO_DIR, ".token-stats-refresh.lock")
+
+
+def _zero_data(r):
+    """零值护栏判据：总量为零且各日也为零（tracker 空/全坏行/全零值行且无 ccusage 回退）→ True。
+    只看 daily 非空不够——合法日期全零值行会造出非空 by_day，恰是要防的归零卡形态。"""
+    return not r.get("total_tokens") and not sum(v for _, v in (r.get("daily") or []))
+
+
+def _refresh_lock():
+    """单轮刷新互斥（与 daemon 单例锁相互独立）：daemon 周期与前台 --once 并发时
+    后到者跳过，避免 SVG/README 并发写与 git index.lock 相撞。
+    返回持锁 fd；抢不到返回 None。"""
+    fd = os.open(REFRESH_LOCK, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None
+    return fd
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true", help="输出聚合 JSON")
@@ -1163,6 +1249,10 @@ def main():
     ap.add_argument("--no-sync", action="store_true", help="只生成 SVG，不提交/推送 GitHub")
     args = ap.parse_args()
 
+    # SVG 写盘、git 子进程、锁文件全部锚定仓库根：任意 cwd 启动都安全，
+    # 不会把卡写去别处、更不会误提交进别的仓库（只有 daemon fork 子进程原本有 chdir）
+    os.chdir(REPO_DIR)
+
     if args.stop:
         stop_daemon()
         return
@@ -1172,26 +1262,49 @@ def main():
         print(json.dumps(r, indent=2, ensure_ascii=False))
         return
 
-    svg_dark = svg_card(r, dark=True)
-    svg_light = svg_card(r, dark=False)
-    svg_zh_dark = svg_card(r, dark=True, zh=True)
-    svg_zh_light = svg_card(r, dark=False, zh=True)
-    for name, svg in (("token-stats-dark.svg", svg_dark),
-                      ("token-stats-light.svg", svg_light),
-                      ("token-stats-zh-dark.svg", svg_zh_dark),
-                      ("token-stats-zh-light.svg", svg_zh_light)):
-        with open(name, "w") as f:
-            f.write(svg)
-        print(f"✅ 已生成 {name}")
-    with open(args.out, "w") as f:  # 默认输出 = 英文 dark 版，兼容旧引用
-        f.write(svg_dark)
-    print(f"   tokens: {fmt_tokens(r['total_tokens'])} | cost: ${r['total_cost']:,.0f} | conversations: {r['conversations']:,}")
-    print(f"   cached: {r['stats']['cached']/max(sum(r['stats'].values()),1)*100:.0f}% | peak: {r['peak_day']} {fmt_tokens(r['peak_day_tokens'])}")
-    print(f"   by agent: {', '.join(f'{k} {fmt_tokens(v)}' for k, v in r['by_agent'].items())}")
-    print(f"   top: {', '.join(f'{n} {fmt_tokens(t)}' for n, t in r['models'][:5])}")
+    # 零值护栏：queue 空/全坏行或 ccusage 回退不可达时聚合全零，
+    # 若照常写盘会把公开卡覆写成 "0 tokens / $1.3K" 并推送（2026-09 两次事故形态）
+    if _zero_data(r):
+        print("⚠️  聚合结果为零，疑似数据源异常，拒绝写盘/推送")
+        if not args.once:
+            start_daemon(args.interval)
+        return
 
-    if not args.no_sync:
-        git_sync()
+    lock_fd = _refresh_lock()
+    if lock_fd is None:
+        print("⚠️  另一刷新在跑（守护周期或前台 --once），跳过本轮刷新")
+        if not args.once:
+            start_daemon(args.interval)
+        return
+
+    try:
+        live = daemon_running() or not args.once   # 无 --once 的运行随后必然拉起守护
+        svg_dark = svg_card(r, dark=True, live=live)
+        svg_light = svg_card(r, dark=False, live=live)
+        svg_zh_dark = svg_card(r, dark=True, zh=True, live=live)
+        svg_zh_light = svg_card(r, dark=False, zh=True, live=live)
+        for name, svg in (("token-stats-dark.svg", svg_dark),
+                          ("token-stats-light.svg", svg_light),
+                          ("token-stats-zh-dark.svg", svg_zh_dark),
+                          ("token-stats-zh-light.svg", svg_zh_light)):
+            with open(name, "w") as f:
+                f.write(svg)
+            print(f"✅ 已生成 {name}")
+        with open(args.out, "w") as f:  # 默认输出 = 英文 dark 版，兼容旧引用
+            f.write(svg_dark)
+        print(f"   tokens: {fmt_tokens(r['total_tokens'])} | cost: ${r['total_cost']:,.0f} | conversations: {r['conversations']:,}")
+        print(f"   cached: {r['stats']['cached']/max(sum(r['stats'].values()),1)*100:.0f}% | peak: {r['peak_day']} {fmt_tokens(r['peak_day_tokens'])}")
+        print(f"   by agent: {', '.join(f'{k} {fmt_tokens(v)}' for k, v in r['by_agent'].items())}")
+        print(f"   top: {', '.join(f'{n} {fmt_tokens(t)}' for n, t in r['models'][:5])}")
+
+        if not args.no_sync:
+            try:
+                git_sync()
+            except Exception as e:
+                # 同步失败不阻断守护启动（否则首跑用户以为起了守护，实际没有）
+                print(f"⚠️  同步失败（{e}），守护照常启动", flush=True)
+    finally:
+        os.close(lock_fd)   # 释放刷新锁
     if not args.once:
         start_daemon(args.interval)
 
@@ -1200,7 +1313,7 @@ def main():
 PID_FILE = os.path.join(REPO_DIR, ".token-stats-daemon.pid")
 LOG_FILE = os.path.join(REPO_DIR, ".token-stats-daemon.log")
 CHECK_EVERY = 60          # 秒：仓库存在性自检间隔
-CYCLE_TIMEOUT = 600       # 秒：单周期超时
+CYCLE_TIMEOUT = 900       # 秒：单周期超时（≥ git_sync 最坏路径：3×90s push + 3×heal + 2×30s 退避）
 
 
 def _pid_alive(pid):
@@ -1235,6 +1348,22 @@ def _lock_daemon():
         return None
     os.ftruncate(fd, 0)
     return fd
+
+
+def daemon_running():
+    """探测守护是否真在跑：对 PID 文件抢非阻塞锁，抢不到 = 有守护持锁。
+    用于页脚 [LIVE]/[SYNC] 如实标注；探测不产生任何残留（抢到即关）。"""
+    try:
+        fd = os.open(PID_FILE, os.O_RDWR)
+    except OSError:
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return True   # 抢不到锁 = 守护持锁在跑
+    os.close(fd)
+    return False
 
 
 def _unpushed_commits():
@@ -1297,50 +1426,129 @@ def _bump_readme_cache_bust(version):
         for attr, img in _README_IMGS:
             text = re.sub(rf'({attr}="{re.escape(img)})(\?v=[^"]*)?(")',
                           rf"\1?v={version}\3", text)
-        with open(path, "w") as f:
-            f.write(text)
+        # 原子写：README 是唯一就地编辑、无重生成来源的文件——
+        # 截断式直写若在写完前被杀，残缺内容会被下轮提交推送且永不自愈
+        tmp = f"{path}.{os.getpid()}.tmp"
+        try:
+            with open(tmp, "w") as f:
+                f.write(text)
+            os.replace(tmp, path)
+        except OSError as e:
+            print(f"   ⚠️ 原子写失败，跳过 {fname}（{e}）")
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
     print(f"   README 缓存参数已更新 v={version}")
+
+
+def _heal_divergence():
+    """push 失败后自愈 non-FF：wall 管线在 GitHub 侧提交会使本地推送被拒，
+    只重试不 rebase 就永远推不上去。fetch 后对上游 rebase -X ours
+    （冲突行取已发布的远端版本，保证发布 v= 单调；本地下轮重新 bump 即可）；
+    离线/无上游静默跳过，绝不留下半完成的 rebase。"""
+    git_dir = os.path.join(REPO_DIR, ".git")
+    if any(os.path.exists(os.path.join(git_dir, s)) for s in ("rebase-merge", "rebase-apply")):
+        return   # 已有 rebase 在进行（可能是人工操作）：不插手
+    try:
+        subprocess.run(["git", "fetch", "origin"], capture_output=True, timeout=30)
+        # -X ours（rebase 语义里 = 已发布的上游侧）：远端 v= 永远是"最近成功发布"的时间戳，
+        # 本地被拒提交里的 v= 必然更旧，冲突行取上游才能保证发布 v 单调不回退
+        subprocess.run(["git", "rebase", "--autostash", "-X", "ours", "@{upstream}"],
+                       capture_output=True, timeout=60)
+    except Exception:
+        return
+    for state in ("rebase-merge", "rebase-apply"):   # -X 管不住的冲突类型：立即回滚
+        if os.path.exists(os.path.join(git_dir, state)):
+            subprocess.run(["git", "rebase", "--abort"], capture_output=True, timeout=60)
+            return
 
 
 def git_sync():
     """提交 SVG/README 变更并推送。
 
-    - 工作区有变更（SVG 或 README）→ 重写 README 的 ?v= 缓存参数 → commit
-    - 存在未推送提交（含上次推送失败遗留）→ push，同周期内退避重试 3 次；
-      仍失败则留到下轮周期继续重试（不会因"无数据变化"漏推）。
+    - 工作区或暂存区有变更（SVG 或 README）→ 重写 README 的 ?v= 缓存参数 → commit；
+      只看工作区会漏掉"add 成功但 commit 失败"的暂存遗留（此后每轮误判无变化，永久卡死）
+    - commit 失败回滚暂存让下轮重新看见 dirty，异常上抛由 main 兜底
+    - 存在未推送提交（含上次推送失败遗留）→ push（90s 超时），同周期内退避重试 3 次，
+      每次失败后先尝试 rebase 自愈远端分叉；仍失败则留到下轮周期继续重试
     """
     svg_dirty = subprocess.run(["git", "diff", "--quiet", "--", "token-stats*.svg"]).returncode != 0
     readme_dirty = subprocess.run(["git", "diff", "--quiet", "--", "README.md", "README.zh-CN.md"]).returncode != 0
-    if not svg_dirty and not readme_dirty:
+    svg_staged = subprocess.run(["git", "diff", "--cached", "--quiet", "--", "token-stats*.svg"]).returncode != 0
+    readme_staged = subprocess.run(["git", "diff", "--cached", "--quiet", "--", "README.md", "README.zh-CN.md"]).returncode != 0
+    if not (svg_dirty or readme_dirty or svg_staged or readme_staged):
         print("   无数据变化，跳过提交")
     else:
         _bump_readme_cache_bust(int(time.time()))
         subprocess.run(["git", "add", "token-stats*.svg", "README.md", "README.zh-CN.md"], check=True)
-        subprocess.run(["git", "commit", "-m", "chore: refresh token stats"], check=True)
+        try:
+            # pathspec 限定：commit 只收本管线文件，不扫进用户手工暂存的无关内容
+            subprocess.run(["git", "commit", "-m", "chore: refresh token stats", "--",
+                            "token-stats*.svg", "README.md", "README.zh-CN.md"], check=True)
+        except subprocess.CalledProcessError:
+            # 只撤销本管线文件的暂存：不带 pathspec 的 reset 会误伤手工暂存的无关文件
+            subprocess.run(["git", "reset", "-q", "HEAD", "--",
+                            "token-stats*.svg", "README.md", "README.zh-CN.md"], check=False)
+            raise
         print("   已提交，推送中…")
     if _unpushed_commits() <= 0:
         return
     for attempt in range(1, 4):
-        r = subprocess.run(["git", "push", "origin", "HEAD"])
-        if r.returncode == 0:
+        try:
+            r = subprocess.run(["git", "push", "origin", "HEAD"], timeout=90)
+        except subprocess.TimeoutExpired:
+            r = None
+            print("   推送超时（90s）", flush=True)
+        if r is not None and r.returncode == 0:
             print("   推送成功")
             return
-        print(f"   推送失败（第 {attempt} 次），30s 后重试…", flush=True)
-        time.sleep(30)
+        _heal_divergence()
+        if attempt < 3:
+            print(f"   推送失败（第 {attempt} 次），30s 后重试…", flush=True)
+            time.sleep(30)
     print("   推送失败（已重试 3 次，下轮周期自动重试）")
 
 
 def daemon_loop(interval_hours, lock_fd):
     """守护主循环。lock_fd 必须持有到进程退出（flock 锁随 fd 释放）。"""
-    signal.signal(signal.SIGTERM, lambda *_: os._exit(0))
+    child = []   # 当前在跑的 --once 子进程：SIGTERM 先杀它再退，防孤儿刷新与新守护并发
+    fails = 0
+
+    def _term(*_):
+        try:
+            if child and child[0].poll() is None:
+                child[0].terminate()
+        except Exception:
+            pass
+        os._exit(0)
+
+    signal.signal(signal.SIGTERM, _term)
     chunks = max(1, int(interval_hours * 3600 / CHECK_EVERY))
     print(f"守护启动 interval={interval_hours}h pid={os.getpid()}", flush=True)
     while os.path.exists(os.path.join(REPO_DIR, ".git")):
         try:
-            subprocess.run([sys.executable, os.path.abspath(__file__), "--once"],
-                           timeout=CYCLE_TIMEOUT, check=True)
+            p = subprocess.Popen([sys.executable, os.path.abspath(__file__), "--once"])
+            child[:] = [p]   # 单次赋值替换：SIGTERM 处理器与 append 之间不留"看不到子进程"的窗口
+            try:
+                rc = p.wait(timeout=CYCLE_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                p.terminate()
+                try:
+                    p.wait(timeout=30)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    p.wait(timeout=30)
+                raise TimeoutError(f"--once 超时 {CYCLE_TIMEOUT:g}s，已终止")
+            child.clear()
+            if rc != 0:
+                raise subprocess.CalledProcessError(rc, "--once")
+            fails = 0
         except Exception as e:
-            print(f"周期失败: {e}", flush=True)
+            fails += 1
+            print(f"周期失败（连续 {fails} 次）: {e}", flush=True)
+            if fails >= 3:
+                print(f"!!! 连续 {fails} 轮失败，请手动跑 --once 看完整报错", flush=True)
         for _ in range(chunks):
             time.sleep(CHECK_EVERY)
             if not os.path.exists(os.path.join(REPO_DIR, ".git")):
@@ -1356,7 +1564,8 @@ def start_daemon(interval_hours):
     if fd is None:
         pid = ""
         try:
-            pid = open(PID_FILE).read().strip()
+            with open(PID_FILE) as f:
+                pid = f.read().strip()
         except OSError:
             pass
         print(f"   后台守护已在运行 (pid {pid})，无需重启" if pid else "   后台守护已在运行，无需重启")
@@ -1391,7 +1600,8 @@ def stop_daemon():
         print("后台守护未在运行")
         return
     try:
-        pid = int(open(PID_FILE).read().strip())
+        with open(PID_FILE) as f:
+            pid = int(f.read().strip())
     except (ValueError, OSError):
         pid = 0
     os.close(fd)

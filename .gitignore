@@ -5,6 +5,9 @@
 __pycache__/
 *.py[cod]
 
+# Crash-orphaned atomic-write temp files (README.md.<pid>.tmp etc.)
+*.tmp
+
 # AI agent work environments - never publish
 .omo/
 .opencode/
@@ -14,9 +17,11 @@ __pycache__/
 .claude/
 .codex/
 .cursor/
+.zcode/
 
 # Local scratch & rendered thumbnails
 artifacts/
+out/
 *.png
 
 # Playwright MCP scratch
@@ -24,6 +29,7 @@ artifacts/
 
 # Token stats daemon runtime state
 .token-stats-daemon.*
+.token-stats-refresh.lock
 
 # Local agent scratch
 .mimosa/
