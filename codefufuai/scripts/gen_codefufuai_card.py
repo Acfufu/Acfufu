@@ -5,10 +5,12 @@ codefufuai is the dsh-superagent deployment (github.com/codefufuai) the
 operator runs from Acfufu/dsh-superagent-prototype. Same terminal-card
 language as gen_acfufu_card.py (titlebar traffic lights, [ OK ] / [LIVE]
 tags, embedded Plex subset from assets/gen-cache, prefers-reduced-motion
-collapse) but a different resident: instead of the miku pet sprite there is
-a hand-drawn 24x26 pixel CRT terminal (droid) — monitor + keyboard + feet,
-4 idle frames swapping via SMIL like the pet (0.4s per frame): eyes blink,
-the screen cursor hops left/right, the mouth talks, the chin LED pulses.
+collapse) and, since 2026-11-02, the same resident species: the CRT droid
+mosaic retired in favour of the mint-choco-miku Codex pet (idle x2 + wave,
+16 steps over 2.9s, official hatch-pet per-frame ms). The pet's frames are
+palette-quantized 144x156 PNGs base64-embedded in pet_frames.py — camo
+serves profile SVGs in secure static mode, so nothing external loads and
+the SMIL <image> swap is the same mechanism the droid used.
 Cards: whoami (identity + boot), cat /etc/dsh/loop (the dsh loop, five
 steps + the harness philosophy quote), cat ~/post (current assignment).
 The blinking block cursor on the trailing prompt line is CSS-driven and
@@ -21,9 +23,10 @@ Facts on the card are evidence-backed (GitHub API, 2026-10-31):
 - zero PRs and zero issues authored so far — she is awaiting her first ask
 
 --freeze K OUT: write a phase-locked copy of the dark/en card where every
-SMIL clock starts at -K*0.4s (frame K showing at t=0) and the CSS cursor is
-pinned to its K<2 ? visible : hidden state — used with headless Chrome to
-prove the animation actually moves (memory: freeze-phase forensics).
+SMIL clock starts at -cum(K)ms (loop step K showing at t=0) and the CSS
+cursor is pinned to its K<2 ? visible : hidden state — used with headless
+Chrome to prove the animation actually moves (memory: freeze-phase
+forensics).
 """
 import argparse
 import getpass
@@ -31,6 +34,9 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pet_frames import BOX, PNGS, STEPS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -68,85 +74,37 @@ LIGHT = dict(DARK, card="#ffffff", titlebar="#f6f8fa", border="#a9c4e4",
 
 MONO = "'Plex',ui-monospace,'SF Mono',Menlo,Consolas,monospace"
 
-# ---- pixel CRT droid -------------------------------------------------------
-# 24x26 mosaic at 6px cells (same grid geometry as the miku pet: 144x156px).
-# 4 idle frames; '.' = transparent, palette index chars below. Every frame
-# row must be exactly 24 chars — asserted at import.
-CELL = 6
-PALETTE = {
-    "1": "#58a6ff",  # monitor top rim (user blue)
-    "2": "#1f4e8c",  # shell / feet
-    "3": "#16375f",  # (reserved: stand shading)
-    "4": "#c9d1d9",  # bezel
-    "5": "#0a0e14",  # screen (card bg)
-    "6": "#3fa060",  # screen glow: cursor / mouth
-    "7": "#e6edf3",  # eyes
-    "8": "#f0d861",  # antenna beacon ([LIVE] yellow)
-    "9": "#111826",  # keyboard base
-    "a": "#6e7f95",  # key caps / closed lids
-    "b": "#a5d6ff",  # screen sheen
-    "c": "#22406a",  # outlines / spacebar — the family border blue
-}
+# ---- resident pet ----------------------------------------------------------
+# mint-choco-miku Codex pet (see pet_frames.py for provenance): idle x2 then
+# one wave, 16 steps over 2.9s with the pack's official per-frame ms. Same
+# 144x156 footprint the droid mosaic had, same SMIL swap mechanism.
 
-R_ANT = "." * 11 + "88" + "." * 11          # antenna beacon (static: on shift)
-R_STEM = "." * 11 + "aa" + "." * 11
-R_RIM = "." * 4 + "1" * 16 + "." * 4        # monitor x4..19, bright top rim
-R_SHELL = "....c" + "2" * 14 + "c...."
-R_BEZEL = "....c" + "4" * 14 + "c...."
-R_TOP = "....c" + "4" + "5" * 12 + "4" + "c...."   # blank screen row (x6..17)
-R_SHEEN = "....c" + "4" + "5" * 9 + "bb" + "5" + "4" + "c...."  # glass sheen
-R_EYES = "....c" + "4" + "55" + "77" + "5555" + "77" + "55" + "4" + "c...."
-R_LIDS = "....c" + "4" + "55" + "aa" + "5555" + "aa" + "55" + "4" + "c...."
-R_SMILE = "....c" + "4" + "5555" + "6666" + "5555" + "4" + "c...."
-R_TALK = "....c" + "4" + "55555" + "66" + "55555" + "4" + "c...."  # open mouth
-R_CUR_L = "....c" + "4" + "66" + "5" * 10 + "4" + "c...."  # cursor at left edge
-R_CUR_R = "....c" + "4" + "5" * 10 + "66" + "4" + "c...."  # cursor hopped right
-R_BLANK = R_TOP
-R_BEZB = R_BEZEL
-R_CHIN_ON = "....c" + "2" * 13 + "8" + "c...."   # chin LED on
-R_CHIN_OFF = R_SHELL
-R_BOTTOM = "." * 4 + "c" * 16 + "." * 4
-R_STAND = "." * 10 + "c" + "22" + "c" + "." * 10
-R_BASE = R_BOTTOM
-R_KB = "....c" + "9" * 14 + "c...."
-R_KEYS = "....c" + "a9" * 7 + "c...."   # 14 key caps alternating
-R_SPACE = "....c" + "99999" + "cccc" + "99999" + "c...."
-R_FEET = "." * 8 + "22" + "." * 4 + "22" + "." * 8
-R_EMPTY = "." * 24
-
-
-def _rows(eyes, mouth, cursor, led):
-    """Assemble one frame: eyes in {'open','shut'}, mouth in {'smile','talk'},
-    cursor in {'left','right','off'}, led in {'on','off'}."""
-    screen = {
-        "open": [R_SHEEN, R_EYES, R_EYES, R_TOP],
-        "shut": [R_SHEEN, R_TOP, R_LIDS, R_TOP],
-    }[eyes]
-    screen += [{"smile": R_SMILE, "talk": R_SMILE}[mouth]]          # r9
-    screen += [R_TALK if mouth == "talk" else R_TOP, R_TOP]         # r10, r11
-    screen += [{"left": R_CUR_L, "right": R_CUR_R, "off": R_BLANK}[cursor]]  # r12
-    screen += [R_TOP]                                               # r13
-    frame = [R_ANT, R_STEM, R_RIM, R_SHELL, R_BEZEL] + screen
-    frame += [R_BEZB, R_CHIN_ON if led == "on" else R_CHIN_OFF,
-              R_BOTTOM, R_STAND, R_STAND, R_BASE, R_KB, R_KEYS, R_SPACE,
-              R_BASE, R_FEET, R_EMPTY]
-    assert len(frame) == 26, len(frame)
-    for r in frame:
-        assert len(r) == 24, r
-    return frame
-
-
-# F0 idle: cursor left, LED on · F1: cursor off (blink), LED off
-# F2 blink: lids down, cursor hopped right · F3 talk: mouth open, cursor off
-FRAMES = [
-    _rows("open", "smile", "left", "on"),
-    _rows("open", "smile", "off", "off"),
-    _rows("shut", "smile", "right", "on"),
-    _rows("open", "talk", "off", "off"),
-]
-
-SPRITE_W = 24 * CELL   # 144px, same footprint as the pet sprite
+SPRITE_W = BOX[0]        # 144px, same footprint as the droid had
 TX = 20 + SPRITE_W + 34  # text column, mirrors the pet card
+PET_LOOP_S = sum(ms for _, ms in STEPS) / 1000
+_STEP_T0 = [sum(ms for _, ms in STEPS[:k]) / (1000 * PET_LOOP_S)
+            for k in range(len(STEPS))]
+
+
+def pet_sprite(x, y, freeze=None):
+    """Frame-swapped pet sprite: one <image> per unique PNG, SMIL discrete
+    opacity windows over the STEPS timeline. freeze=K pins loop step K at
+    t=0 (negative begin) for screenshot forensics."""
+    n = len(STEPS)
+    kt = ";".join(f"{t:.4f}" for t in _STEP_T0)
+    begin = f' begin="{-sum(ms for _, ms in STEPS[:freeze]) / 1000:.3f}s"' \
+        if freeze is not None else ""
+    out = [f'<g transform="translate({x},{y})">']
+    for fi, b64 in enumerate(PNGS):
+        base = "" if fi == 0 else ' opacity="0"'
+        vals = ";".join("1" if step_fi == fi else "0" for step_fi, _ms in STEPS)
+        out.append(f'<image{base} width="{BOX[0]}" height="{BOX[1]}" '
+                   f'href="data:image/png;base64,{b64}">'
+                   f'<animate attributeName="opacity" calcMode="discrete" '
+                   f'values="{vals}" keyTimes="{kt}" dur="{PET_LOOP_S:.2f}s" '
+                   f'repeatCount="indefinite"{begin}/></image>')
+    out.append("</g>")
+    return "".join(out)
 
 # ---- copy ------------------------------------------------------------------
 
@@ -321,11 +279,11 @@ def build(theme, zh=False, freeze=None, prs_opened=None):
         css += f".cur {{ animation:none !important; opacity:{1 if freeze < 2 else 0}; }}"
     s.append(f"<style>{css}</style>")
 
-    # ---- card 1: whoami (droid + boot lines) ----
+    # ---- card 1: whoami (pet + boot lines) ----
     y1 = 2
     card_rect(s, y1, H1)
     titlebar(s, y1, T["c1_cmd"], T["c1_cap"])
-    s.append(droid_sprite(20, y1 + TB_H + 12, freeze))
+    s.append(pet_sprite(20, y1 + TB_H + 12, freeze))
     y0 = y1 + TB_H + 24
     lines(s, TX, y0, [
         ("liv", f'[LIVE] <tspan fill="{C["title"]}" font-weight="700">{esc(T["c1_name"])}</tspan>'),
@@ -373,7 +331,8 @@ def main():
     global OUT
     ap = argparse.ArgumentParser()
     ap.add_argument("--freeze", type=int, default=None, metavar="K",
-                    help="emit one phase-locked dark/en copy for screenshots")
+                    help="emit one phase-locked dark/en copy (loop step K at "
+                         "t=0) for screenshots")
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--out-dir", type=Path, default=None,
                     help="override the assets dir (staging/testing)")
