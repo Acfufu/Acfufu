@@ -27,14 +27,26 @@ prove the animation actually moves (memory: freeze-phase forensics).
 """
 import argparse
 import getpass
+import json
 import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# staged for the codefufuai/codefufuai profile repo — NOT the root assets/,
-# where profile-*.svg is the operator's own card (same-name collision)
-OUT = ROOT / "codefufuai" / "assets"
+
+
+def resolve_out():
+    """Default output = <repo>/assets (her layout, where profile-*.svg is
+    HERS). Running inside the operator's profile repo worktree (the family's
+    gen_acfufu_card.py is present, profile-*.svg is the operator's own card)
+    forces the staging dir — profile-*.svg collides by name. CONTEXT.md is
+    no signal here: it's gitignored and absent from worktrees."""
+    if (ROOT / "scripts" / "gen_acfufu_card.py").exists():
+        return ROOT / "codefufuai" / "assets"
+    return ROOT / "assets"
+
+
+OUT = resolve_out()
 # same shared-per-user cache as the family generators; fonts only (no icon
 # fetches — this card is text + sprite, so builds never need the network)
 CACHE = Path(tempfile.gettempdir()) / f"dahan-replica-cache-{getpass.getuser()}"
@@ -198,6 +210,9 @@ Y3 = Y2 + H2 + 16
 H3 = 170
 H = Y3 + H3  # 602
 
+# live stats baked at build time; CI overrides via --stats-json (refresh_cards.py)
+STATS = {"prs_opened": 0}
+
 
 def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -286,10 +301,17 @@ def lines(s, x, y0, rows):
         s.append(f'<text class="{cls}" x="{x}" y="{y0 + i * 20}">{body}</text>')
 
 
-def build(theme, zh=False, freeze=None):
+def build(theme, zh=False, freeze=None, prs_opened=None):
     global C
     C = LIGHT if theme == "light" else DARK
-    T = STR["zh"] if zh else STR["en"]
+    T = dict(STR["zh"] if zh else STR["en"])
+    # CI-refreshable line: refresh_cards.py passes the live PR count; the
+    # baked 0 stays the offline default (口径: 卡片是转述，数据归 CI 取证)
+    n = STATS["prs_opened"] if prs_opened is None else prs_opened
+    if zh:
+        T["c3_l4"] = f"[ OK ] 已开 PR：{n}" + (" · 收件箱为空" if n == 0 else " · 收件箱有活")
+    else:
+        T["c3_l4"] = f"[ OK ] PRs opened: {n}" + (" · inbox empty" if n == 0 else " · inbox live")
 
     s = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" '
@@ -348,11 +370,20 @@ def build(theme, zh=False, freeze=None):
 
 
 def main():
+    global OUT
     ap = argparse.ArgumentParser()
     ap.add_argument("--freeze", type=int, default=None, metavar="K",
                     help="emit one phase-locked dark/en copy for screenshots")
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--out-dir", type=Path, default=None,
+                    help="override the assets dir (staging/testing)")
+    ap.add_argument("--stats-json", type=Path, default=None,
+                    help='{"prs_opened": N} — live stats from refresh_cards.py')
     a = ap.parse_args()
+    if a.stats_json:
+        STATS.update(json.loads(a.stats_json.read_text()))
+    if a.out_dir:
+        OUT = a.out_dir
     if a.freeze is not None:
         dest = a.out or ROOT / "preview" / "codefufuai"
         dest.mkdir(parents=True, exist_ok=True)
