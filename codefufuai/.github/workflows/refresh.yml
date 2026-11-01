@@ -13,14 +13,12 @@ name: refresh cards
 
 on:
   schedule:
-    # 00:17 profile-local (UTC+8) — just after her wall's day rolls over:
-    # GitHub buckets contributions by the PROFILE timezone (her fork landed
-    # 21:40 UTC on 10-31 and shows on the 11-01 cell), so refreshing right
-    # after local midnight catches the new day immediately. :17 off-minute
-    # dodges the scheduler's top-of-hour congestion. Actions cron is
-    # UTC-only — the local wall time is achieved by conversion, not by a
-    # timezone field.
-    - cron: "17 16 * * *"
+    # 05:17 Beijing, daily, off-minute (scheduler congestion clusters on
+    # round minutes). The wall itself rolls at profile-local midnight
+    # (GitHub buckets contributions by the PROFILE timezone — her fork
+    # landed 21:40 UTC on 10-31 and shows on the 11-01 cell), so any
+    # early-morning run already carries the complete previous day.
+    - cron: "17 21 * * *"
   workflow_dispatch:
   push:
     branches: [main]
