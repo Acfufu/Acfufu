@@ -2,10 +2,11 @@
 """Generate assets/profile{,-zh}-{dark,light}.svg — Acfufu's profile card.
 
 Engine cloned from the dahan8473 replica (gen_dahan_replica.py): terminal-card
-layout + CSS keyframes (pet 4-frame idle animation, stepped fade-ins,
+layout + CSS keyframes (pet idle frame animation, stepped fade-ins,
 prefers-reduced-motion collapse) with the subsetted IBM Plex Mono embedded
-when the build cache has it. Profile cards: pet (miku pixel sprite, frames
-from miku_frames.py), stack. zh variants localize captions and labels;
+when the build cache has it. Profile cards: pet (qinglong pixel sprite,
+frames from qinglong_frames.py), stack. zh variants localize captions and
+labels;
 terminal commands stay English in both languages. Also emits the standalone
 wall card (assets/wall{,-zh}-{dark,light}.svg): titlebar + `$ cat
 /var/log/wall` + the latest messages from data/wall.json — kept out of the
@@ -30,7 +31,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from miku_frames import CELL as MCELL, FRAMES, PALETTE  # noqa: E402
+from qinglong_frames import CELL as MCELL, FRAMES, IDLE_MS, PALETTE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
@@ -101,13 +102,12 @@ ZAI_KNOCKOUT = (
 ZAI_DIAG = "24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"
 
 PET = {
-    "name": "miku",
-    "url": "codex-pets.net/#/pets/miku",
-    "owner": "tune",
-    "likes": 45,
-    "views": "2.2k",
+    "name": "qinglong",
+    "url": "~/.codex/pets/fufu-qinglong",
+    "owner": "acfufu",
     "states": 9,
-    "tags": "anime / pixel / soft / mascot",
+    "frames": 57,
+    "tags": "dragon / pixel / soft / mascot",
 }
 
 WALL = [
@@ -146,17 +146,17 @@ def load_wall():
             return rows
     return WALL
 
-# UI strings per language; terminal commands (pets status miku, cat stack,
-# cat reach) stay English in both. SVG links are not clickable — the README
-# markdown rows carry the functional hrefs.
+# UI strings per language; terminal commands (pets status qinglong, cat
+# stack, cat reach) stay English in both. SVG links are not clickable — the
+# README markdown rows carry the functional hrefs.
 STR = {
     "en": dict(
         aria="acfufu terminal profile card",
-        pet_desc="based on hatsune miku",
-        pet_meta=f"creature · owner: {PET['owner']} · {PET['likes']} likes · {PET['views']} views",
-        pet_states=f"{PET['states']} states · tags: {PET['tags']}",
-        pet_mood="mood: idle · now: singing in the terminal",
-        pet_open="> open in browser: ",
+        pet_desc="tiny jade dragon (fufu mint style)",
+        pet_meta=f"custom codex pet · owner: {PET['owner']} · codex v1 atlas",
+        pet_states=f"{PET['states']} states · {PET['frames']} frames · tags: {PET['tags']}",
+        pet_mood="mood: idle · now: napping on a cloud",
+        pet_open="> installed at: ",
         stack_cap="by bytes · 30 public repos",  # 一次性测量（2026-09 github api），改行前先复测
         models_label="MODELS",
         wall_aria="acfufu wall",
@@ -165,11 +165,11 @@ STR = {
     ),
     "zh": dict(
         aria="acfufu 终端画像卡",
-        pet_desc="原型：初音未来",
-        pet_meta=f"生物 · 主人：{PET['owner']} · {PET['likes']} 赞 · {PET['views']} 浏览",
-        pet_states=f"{PET['states']} 种状态 · 标签：{PET['tags']}",
-        pet_mood="心情：idle · 此刻：在终端里唱歌",
-        pet_open="> 浏览器打开：",
+        pet_desc="Fufu Mint 风格小青龙",
+        pet_meta=f"自制 codex 宠物 · 主人：{PET['owner']} · codex v1 图集",
+        pet_states=f"{PET['states']} 种状态 · {PET['frames']} 帧 · 标签：青龙 / 像素 / 软萌 / 吉祥物",
+        pet_mood="心情：idle · 此刻：在云端打盹",
+        pet_open="> 安装于：",
         stack_cap="按字节 · 30 个公开仓库",
         models_label="模型",
         wall_aria="acfufu 留言墙",
@@ -230,21 +230,33 @@ def get_icon_paths():
 
 
 def pet_sprite(x, y):
-    """4-frame miku sprite, CSS-driven frame swap (0.4s per frame)."""
+    """6-frame qinglong sprite: per-color path-merged runs, SMIL frame swap
+    at the pack's own idle durations (IDLE_MS)."""
     out = [f'<g transform="translate({x},{y})">']
     n = len(FRAMES)
+    total = sum(IDLE_MS)
+    kt = ";".join(f"{sum(IDLE_MS[:i]) / total:.4f}" for i in range(n))
     for fi, frame in enumerate(FRAMES):
         base = "" if fi == 0 else ' opacity="0"'
         vals = ";".join("1" if k == fi else "0" for k in range(n))
-        kt = ";".join(f"{k / n:.3f}" for k in range(n))
         out.append(f'<g{base}><animate attributeName="opacity" calcMode="discrete" '
-                   f'values="{vals}" keyTimes="{kt}" dur="{0.4 * n}s" repeatCount="indefinite"/>')
+                   f'values="{vals}" keyTimes="{kt}" dur="{total}ms" repeatCount="indefinite"/>')
+        runs_by_color = {}
         for ry, row in enumerate(frame):
-            for rx, idx in enumerate(row):
-                if idx == ".":
+            rx = 0
+            while rx < len(row):
+                if row[rx] == ".":
+                    rx += 1
                     continue
-                out.append(f'<rect x="{rx * MCELL}" y="{ry * MCELL}" width="{MCELL}" height="{MCELL}" '
-                           f'fill="{PALETTE[int(idx, 16)]}"/>')
+                rx2 = rx
+                while rx2 + 1 < len(row) and row[rx2 + 1] == row[rx]:
+                    rx2 += 1
+                runs_by_color.setdefault(row[rx], []).append((rx, ry, rx2 - rx + 1))
+                rx = rx2 + 1
+        for idx, runs in runs_by_color.items():
+            d = "".join(f"M{cx * MCELL} {cy * MCELL}h{w * MCELL}v{MCELL}h-{w * MCELL}z"
+                        for cx, cy, w in runs)
+            out.append(f'<path d="{d}" fill="{PALETTE[int(idx, 16)]}"/>')
         out.append("</g>")
     out.append("</g>")
     return "".join(out)
@@ -299,11 +311,11 @@ def build(theme, zh=False):
     # ---- card 1: pet (y=2, h=212) ----
     y1, h1 = 2, 212
     card_rect(s, y1, h1)
-    titlebar(s, y1, "pets status miku", PET["url"])
+    titlebar(s, y1, "pets status qinglong", PET["url"])
     s.append(pet_sprite(20, y1 + TB_H + 12))
-    tx = 20 + 24 * MCELL + 34
+    tx = 20 + len(FRAMES[0][0]) * MCELL + 34
     lines = [
-        ("liv", f'[PET] <tspan fill="{C["title"]}" font-weight="700">miku · {esc(T["pet_desc"])}</tspan>'),
+        ("liv", f'[PET] <tspan fill="{C["title"]}" font-weight="700">{PET["name"]} · {esc(T["pet_desc"])}</tspan>'),
         ("ok", f"[ OK ] {esc(T['pet_meta'])}"),
         ("ok", f"[ OK ] {esc(T['pet_states'])}"),
         ("liv", f"[LIVE] {esc(T['pet_mood'])}"),
