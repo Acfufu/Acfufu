@@ -4,8 +4,10 @@
 Engine cloned from the dahan8473 replica (gen_dahan_replica.py): terminal-card
 layout + CSS keyframes (pet idle frame animation, stepped fade-ins,
 prefers-reduced-motion collapse) with the subsetted IBM Plex Mono embedded
-when the build cache has it. Profile cards: pet (qinglong pixel sprite,
-frames from qinglong_frames.py), stack. zh variants localize captions and
+when the build cache has it. Profile cards: pet (qinglong HD sprite, base64
+PNG frames from qinglong_hd_frames.py — the same <image>-swap mechanism as
+codefufuai's card; the 4px-block mosaic lives on in qinglong_frames.py, now
+only the IDLE_MS source of truth), stack. zh variants localize captions and
 labels;
 terminal commands stay English in both languages. Also emits the standalone
 wall card (assets/wall{,-zh}-{dark,light}.svg): titlebar + `$ cat
@@ -31,7 +33,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from qinglong_frames import CELL as MCELL, FRAMES, IDLE_MS, PALETTE  # noqa: E402
+from qinglong_hd_frames import BOX, IDLE_MS, PNGS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
@@ -229,35 +231,28 @@ def get_icon_paths():
     return icons
 
 
-def pet_sprite(x, y):
-    """6-frame qinglong sprite: per-color path-merged runs, SMIL frame swap
-    at the pack's own idle durations (IDLE_MS)."""
+def pet_sprite(x, y, freeze=None):
+    """6-frame qinglong HD sprite: one <image> per base64 PNG, SMIL discrete
+    opacity windows at the pack's own idle durations (IDLE_MS) — the same
+    mechanism as codefufuai's pet card. freeze=K pins loop step K at t=0
+    (negative begin) for screenshot forensics."""
+    n = len(PNGS)
+    total_ms = sum(IDLE_MS)
+    kt = ";".join(f"{sum(IDLE_MS[:i]) / total_ms:.4f}" for i in range(n))
+    # pin at the MIDDLE of step freeze: negative begin exactly at the step's
+    # start lands on its end boundary, where discrete already flips to the
+    # next frame (f1/f2 froze identical that way)
+    begin = f' begin="{-((sum(IDLE_MS[:freeze]) + IDLE_MS[freeze] / 2) / 1000):.3f}s"' \
+        if freeze is not None else ""
     out = [f'<g transform="translate({x},{y})">']
-    n = len(FRAMES)
-    total = sum(IDLE_MS)
-    kt = ";".join(f"{sum(IDLE_MS[:i]) / total:.4f}" for i in range(n))
-    for fi, frame in enumerate(FRAMES):
+    for fi, b64 in enumerate(PNGS):
         base = "" if fi == 0 else ' opacity="0"'
         vals = ";".join("1" if k == fi else "0" for k in range(n))
-        out.append(f'<g{base}><animate attributeName="opacity" calcMode="discrete" '
-                   f'values="{vals}" keyTimes="{kt}" dur="{total}ms" repeatCount="indefinite"/>')
-        runs_by_color = {}
-        for ry, row in enumerate(frame):
-            rx = 0
-            while rx < len(row):
-                if row[rx] == ".":
-                    rx += 1
-                    continue
-                rx2 = rx
-                while rx2 + 1 < len(row) and row[rx2 + 1] == row[rx]:
-                    rx2 += 1
-                runs_by_color.setdefault(row[rx], []).append((rx, ry, rx2 - rx + 1))
-                rx = rx2 + 1
-        for idx, runs in runs_by_color.items():
-            d = "".join(f"M{cx * MCELL} {cy * MCELL}h{w * MCELL}v{MCELL}h-{w * MCELL}z"
-                        for cx, cy, w in runs)
-            out.append(f'<path d="{d}" fill="{PALETTE[int(idx, 16)]}"/>')
-        out.append("</g>")
+        out.append(f'<image{base} width="{BOX[0]}" height="{BOX[1]}" '
+                   f'href="data:image/png;base64,{b64}">'
+                   f'<animate attributeName="opacity" calcMode="discrete" '
+                   f'values="{vals}" keyTimes="{kt}" dur="{total_ms}ms" '
+                   f'repeatCount="indefinite"{begin}/></image>')
     out.append("</g>")
     return "".join(out)
 
@@ -298,7 +293,7 @@ def card_rect(s, y, h):
              f'fill="{C["card"]}" stroke="{C["border"]}"/>')
 
 
-def build(theme, zh=False):
+def build(theme, zh=False, freeze=None):
     global C
     C = LIGHT if theme == "light" else DARK
     T = STR["zh"] if zh else STR["en"]
@@ -312,8 +307,8 @@ def build(theme, zh=False):
     y1, h1 = 2, 212
     card_rect(s, y1, h1)
     titlebar(s, y1, "pets status qinglong", PET["url"])
-    s.append(pet_sprite(20, y1 + TB_H + 12))
-    tx = 20 + len(FRAMES[0][0]) * MCELL + 34
+    s.append(pet_sprite(20, y1 + TB_H + 12, freeze))
+    tx = 20 + BOX[0] + 34
     lines = [
         ("liv", f'[PET] <tspan fill="{C["title"]}" font-weight="700">{PET["name"]} · {esc(T["pet_desc"])}</tspan>'),
         ("ok", f"[ OK ] {esc(T['pet_meta'])}"),
@@ -398,14 +393,24 @@ def build_wall(theme, zh=False):
 
 
 def main():
-    OUT.mkdir(exist_ok=True)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out-dir", type=Path, default=None,
+                    help="default: assets/ (use preview dirs for scratch)")
+    ap.add_argument("--freeze", type=int, default=None, metavar="STEP",
+                    help="pin the pet sprite at loop step STEP (screenshot "
+                         "forensics; profile cards only)")
+    a = ap.parse_args()
+    out = a.out_dir or OUT
+    out.mkdir(parents=True, exist_ok=True)
     for kind, fn in (("profile", build), ("wall", build_wall)):
         for theme in ("dark", "light"):
             for zh in (False, True):
                 name = f"{kind}-zh-{theme}.svg" if zh else f"{kind}-{theme}.svg"
-                p = OUT / name
-                p.write_text(fn(theme, zh))
-                print(f"wrote {p.relative_to(ROOT)} ({p.stat().st_size} bytes)")
+                p = out / name
+                kw = {"freeze": a.freeze} if kind == "profile" else {}
+                p.write_text(fn(theme, zh, **kw))
+                print(f"wrote {p} ({p.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":
