@@ -109,7 +109,96 @@ MODEL_NAMES = {
 AGENT_COLORS = {
     "codex": "#6c63ff", "claude": "#51cf66", "opencode": "#22b8cf",
     "gemini": "#4285F4", "zcode": "#e64980", "other": "#8b949e",
+    "workbuddy": "#e3b341",   # 原灰色兜底与 Other 相撞，堆叠条新增金色
 }
+
+# 压缩单条（BY TOOL / TOP MODELS，2026-11-02 grill 定稿）
+MODEL_BAR_COLORS = ["#58a6ff", "#51cf66", "#e64980", "#22b8cf", "#a371f7", "#e3b341"]
+CW_MAX = 888   # 卡内绘图宽 X1-X0
+
+
+def _pct1(p):
+    """图例口径：一位小数，整数省小数（49%、37.2%）。"""
+    return f"{p:.1f}%".replace(".0%", "%")
+
+
+def _pct2(p):
+    """悬停口径：TokenTracker 同款两位小数，<0.01% 兜底。"""
+    return "<0.01%" if 0 < p < 0.01 else f"{p:.2f}%"
+
+
+def _bar_layout(r, zh, ys, acc):
+    """压缩双条预计算：分段+悬停文案+图例行数+纵向编排。
+    工具 Top5+Other（悬停带模型数，Other 展开前 5 明细）；
+    模型 Top7+Other（Other 分母/明细取 merged 全榜，不受 models[:10] 影响）；
+    分母统一=总 token；图例按 Plex 7.2px/字符贪心换行。
+    纵向编排（2026-11-02 二次调整）：活动区 → 趋势区 → 双条区 → 页脚。"""
+    total = r["total_tokens"]
+    agents = sorted(((n, t) for n, t in (r["by_agent"] or {}).items() if t > 0),
+                    key=lambda x: -x[1])
+    merged = {}
+    for mn, tok in (r["by_model"] or {}).items():
+        nm = MODEL_NAMES.get(mn, mn)
+        if tok > 0:
+            merged[nm] = merged.get(nm, 0) + tok
+    models = sorted(merged.items(), key=lambda x: -x[1])
+    n_models = len(models)
+    agent_models = r.get("agent_models") or {}
+    more = "更多" if zh else "more"
+
+    def _tip_main(name, tok, k=None):
+        p = tok / total * 100 if total else 0
+        s = f"{name} · {fmt_tokens(tok)} ({_pct2(p)})"
+        if k is not None:
+            s += f" · {k} 个模型" if zh else f" · {k} models"
+        return s
+
+    def _tip_other(rest, disp_fn):
+        tt = sum(t for _, t in rest)
+        p = tt / total * 100 if total else 0
+        parts = [f"{disp_fn(n)} {_pct2(t / total * 100 if total else 0)}"
+                 for n, t in rest[:5]]
+        if len(rest) > 5:
+            parts.append(f"+{len(rest) - 5} {more}")
+        return f"Other · {fmt_tokens(tt)} ({_pct2(p)}) — " + " · ".join(parts)
+
+    t_shown, t_rest = agents[:5], agents[5:]
+    tool_segs = [(_agent_disp(n), t, AGENT_COLORS.get(n.lower(), "#8b949e"),
+                  _tip_main(_agent_disp(n), t, agent_models.get(n.lower(), 0)))
+                 for n, t in t_shown]
+    tool_segs.append(("Other", total - sum(t for _, t in t_shown), "#8b949e",
+                      _tip_other(t_rest, _agent_disp)))
+    m_shown, m_rest = models[:7], models[7:]
+    model_segs = []
+    for i, (nm, t) in enumerate(m_shown):
+        model_segs.append((nm, t, acc if i == 0 else MODEL_BAR_COLORS[i - 1],
+                           _tip_main(nm, t)))
+    model_segs.append(("Other", total - sum(t for _, t in m_shown), "#8b949e",
+                       _tip_other(m_rest, lambda n: n)))
+
+    def _rows(segs):
+        line, n_rows, end_x = [], 1, 0
+        for name, tok, _, _ in segs:
+            s = _pct1(tok / total * 100 if total else 0)
+            iw = 12 + len(name) * 7.2 + 7.2 + len(s) * 7.2
+            px = end_x + 34 if line else 0
+            if line and px + iw > CW_MAX:
+                n_rows += 1
+                line, px = [], 0
+            line.append(px)
+            end_x = px + iw
+        return n_rows
+
+    rows_tool, rows_model = _rows(tool_segs), _rows(model_segs)
+    yo = (ys + 279) + 24 - 496      # lg_y = ys+279；趋势分隔线 = lg_y+24，内部 -496+yo
+    bt = 694 + yo + 13              # 双条标题 = 趋势末(yv+4 = 694+yo) + 13
+    leg2_end = bt + 112 + 20 * (rows_tool + rows_model - 2)
+    foot_div = leg2_end + 12
+    tt = fmt_tokens(total)
+    cap = f"共 {tt} · {n_models} 个模型" if zh else f"{tt} total · {n_models} models"
+    return dict(tool_segs=tool_segs, model_segs=model_segs, rows_tool=rows_tool,
+                rows_model=rows_model, cap=cap, yo=yo, bt=bt,
+                foot_div=foot_div, foot_text=foot_div + 28, h=foot_div + 48)
 
 # 终端卡视觉语言（与 scripts/gen_acfufu_card.py 同族）：等宽字体 + Plex 子集内嵌。
 # gen-cache 里的 plex b64 是按画像卡字符集裁的子集；缺字符走系统回退，不报错。
@@ -279,7 +368,7 @@ def load_tracker():
     r = {"total_tokens": 0, "input": 0, "output": 0, "cached": 0, "cc": 0,
          "conversations": 0, "cost": 0.0, "by_agent": {}, "by_model": {},
          "by_model_cost": {}, "period_start": None, "peak_day": None,
-         "peak_day_tokens": 0, "by_day": {}}
+         "peak_day_tokens": 0, "by_day": {}, "agent_models": {}}
     dedup = {}
     with open(TRACKER_QUEUE) as f:
         for line in f:
@@ -321,6 +410,8 @@ def load_tracker():
         r["conversations"] += conv
         r["by_agent"][src] = r["by_agent"].get(src, 0) + tot
         r["by_model"][mdl] = r["by_model"].get(mdl, 0) + tot
+        if tot > 0:   # 每工具模型数（堆叠条悬停用；集合暂存，返回前转计数）
+            r["agent_models"].setdefault(src, set()).add(mdl)
 
         p = price_for(idx, mdl)
         if p:
@@ -347,6 +438,7 @@ def load_tracker():
         day, toks = max(peak.items(), key=lambda x: x[1])
         r["peak_day"], r["peak_day_tokens"] = day, toks
     r["by_day"] = peak
+    r["agent_models"] = {k.lower(): len(v) for k, v in r["agent_models"].items()}
     return r
 
 
@@ -409,8 +501,9 @@ def load_outcomes():
 
 # ============ 聚合 ============
 def _agent_disp(name):
-    """agent 源名 → 展示名（opencode 特例，其余 capitalize）"""
-    return "OpenCode" if name == "opencode" else name.capitalize()
+    """agent 源名 → 展示名（opencode 特例按 lower 匹配：queue 原始 source
+    小写、tracker 状态文件键已美化成 OpenCode，两种键形都要命中）"""
+    return "OpenCode" if name.lower() == "opencode" else name.capitalize()
 
 
 def aggregate():
@@ -418,7 +511,7 @@ def aggregate():
         "total_tokens": 0, "total_cost": 0.0, "conversations": 0,
         "by_agent": {}, "by_model": {}, "models": [], "period": "",
         "period_start": "", "top_model": "", "peak_day": "", "peak_day_tokens": 0,
-        "daily": [],
+        "daily": [], "agent_models": {},
         "sessions": None, "qpd": None,
         "stats": {"input": 0, "output": 0, "cached": 0, "cc": 0},
     }
@@ -430,6 +523,7 @@ def aggregate():
         result["conversations"] = tr["conversations"]
         result["by_agent"] = tr["by_agent"]
         result["by_model"] = tr["by_model"]
+        result["agent_models"] = tr.get("agent_models") or {}
         result["period_start"] = (tr["period_start"] or "")[:7]
         result["peak_day"] = tr["peak_day"]
         result["peak_day_tokens"] = tr["peak_day_tokens"]
@@ -446,6 +540,7 @@ def aggregate():
             result["total_cost"] = t.get("totalCost", 0.0)
             days = data.get("daily", [])
             st_in = st_cached = st_out = st_cc = 0
+            am = {}
             for day in days:
                 for a in day.get("agents", []):
                     name = str(a.get("agent") or "?")
@@ -454,11 +549,15 @@ def aggregate():
                         mn = str(mb.get("modelName") or "?")
                         mi, mc = _num(mb.get("inputTokens")), _num(mb.get("cacheReadTokens"))
                         mo, mcc = _num(mb.get("outputTokens")), _num(mb.get("cacheCreationTokens"))
-                        result["by_model"][mn] = result["by_model"].get(mn, 0) + mi + mc + mo + mcc
+                        mt = mi + mc + mo + mcc
+                        result["by_model"][mn] = result["by_model"].get(mn, 0) + mt
+                        if mt > 0:
+                            am.setdefault(name.lower(), set()).add(mn)
                         st_in += mi
                         st_cached += mc
                         st_out += mo
                         st_cc += mcc
+            result["agent_models"] = {k: len(v) for k, v in am.items()}
             # 回退分支也填 stats：否则 cpct 落 95.0 兜底，页脚伪造 "cached 95%"
             result["stats"] = {"input": st_in, "output": st_out, "cached": st_cached, "cc": st_cc}
             if days:
@@ -526,11 +625,6 @@ def fmt_tokens(n):
 def esc(s):
     # stdlib 等价：html.escape(quote=False) 只转义 & < >，引号原样
     return html.escape(s, quote=False)
-
-
-def _trunc(s, cols):
-    """等宽标签截断：超宽截到 cols 字符并加省略号（12px Plex ≈ 7.2px/字符）"""
-    return s if len(s) <= cols else s[:cols - 1] + "…"
 
 
 def _nice_max(v):
@@ -863,6 +957,8 @@ def svg_card(r, dark=True, zh=False, live=None):
                    snake_tail=("#3d8ae0", "#79b3ec"),
                    split=["#d97706", "#b45309", "#f59e0b", "#8c959f"])
         HM = ["#ebedf0", "#f5e0b0", "#e8c26a", "#d69b2f", "#b45309"]
+    LAY = _bar_layout(r, zh, TB_H, PAL["acc"])
+    H = LAY["h"]   # 卡高由区块编排推导：活动区 → 趋势区 → 双条区 → 页脚
 
     if zh:
         L = dict(aria="AI Token 用量",
@@ -1158,58 +1254,68 @@ def svg_card(r, dark=True, zh=False, live=None):
             lines.append(f'<text class="r{k}" x="{X0 + 108}" y="{lg_y + 8}" font-size="9.5" font-weight="600" '
                          f'font-family="{MONO}" fill="{PAL["user"]}">{fmt_tokens(pre[i1])}/{tt}</text>')
 
-    # ===== 双栏：BY TOOL 条 | TOP MODELS 条（同构条形图） =====
-    col_gap, left_w = 28, 400
-    rgt_x = X0 + left_w + col_gap
-    rgt_w = X1 - rgt_x
-    text(X0, 304 + YS, L["by_tool"], 11, 600, "muted", spacing="2")
-    text(rgt_x, 304 + YS, L["top_models"], 11, 600, "muted", spacing="2")
-    y0 = 318 + YS
-    agents = r["by_agent"]
-    total = r["total_tokens"]
+    lines.extend(trend_section(r, PAL, L, X0, X1, LAY["yo"]))
 
-    # 左栏：工具（品牌色）——只列前 6，长尾折叠成汇总行
-    # （历史 bug：工具全列时行数不封顶，会与趋势区标题重叠）
-    label_w, pct_w = 72, 96
-    track_x = X0 + label_w
-    track_w = left_w - label_w - pct_w
-    TOOL_SHOW = 6
-    tool_items = [(n, t) for n, t in agents.items() if t > 0]
-    for i, (name, tok) in enumerate(tool_items[:TOOL_SHOW]):
-        pct = tok / total * 100 if total else 0
-        bw = max(track_w * pct / 100, 2)
-        color = AGENT_COLORS.get(name.lower(), "#8b949e")
-        text(X0, y0 + 10 + i * 26, _trunc(_agent_disp(name), 10), 12, 500, "text2")
-        lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{track_w}" height="10" rx="3" class="track"/>')
-        lines.append(f'<rect x="{track_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{color}" opacity="0.9"/>')
-        text(X0 + left_w, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
-    rest = tool_items[TOOL_SHOW:]
-    if rest:
-        rs = sum(t for _, t in rest)
-        rpct = rs / total * 100 if total else 0
-        text(X0, y0 + 10 + TOOL_SHOW * 26,
-             f"+{len(rest)} {L['more_tools']} · {fmt_tokens(rs)} ({rpct:.0f}%)",
-             10.5, 400, "faint", num=True)
+    # ===== 压缩单条：BY TOOL ｜ TOP MODELS（grill 定稿；置于趋势区后、页脚前） =====
+    # 一条堆叠条 + 圆点图例；图例一位小数、悬停两位小数（<0.01% 兜底）；
+    # 工具 Top5+Other（悬停带模型数）/ 模型 Top7+Other；分母=总 token；
+    # 条 10px rx3 同卡内小条语言，段间无缝无底轨。
+    _bt = LAY["bt"]
+    def _seg_rects(x, y, w, h, segs):
+        out = [f'<clipPath id="cbar{x}y{y}"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="3"/></clipPath>',
+               f'<g clip-path="url(#cbar{x}y{y})">']
+        cx = x
+        for i, (name, tok, color, tip) in enumerate(segs):
+            bw = w * tok / r["total_tokens"] if r["total_tokens"] else 0
+            bw = max(bw, 2) if i < len(segs) - 1 else (x + w - cx)
+            out.append(f'<rect x="{cx:.1f}" y="{y}" width="{max(bw, 0.5):.1f}" height="{h}" '
+                       f'fill="{color}"><title>{esc(tip)}</title></rect>')
+            cx += bw
+        out.append("</g>")
+        return "".join(out)
 
-    # 右栏：模型（琥珀强调色）
-    rlabel_w, rpct_w = 142, 84
-    rtrack_x = rgt_x + rlabel_w
-    rtrack_w = rgt_w - rlabel_w - rpct_w
-    for i, (name, tok) in enumerate(r["models"][:6]):
-        pct = tok / total * 100 if total else 0
-        bw = max(rtrack_w * pct / 100, 2)
-        text(rgt_x, y0 + 10 + i * 26, _trunc(name, 19), 12, 500, "text2")
-        lines.append(f'<rect x="{rtrack_x}" y="{y0 + i * 26}" width="{rtrack_w}" height="10" rx="3" class="track"/>')
-        lines.append(f'<rect x="{rtrack_x}" y="{y0 + i * 26}" width="{bw:.1f}" height="10" rx="3" fill="{PAL["acc"]}" opacity="0.9"/>')
-        text(X1, y0 + 10 + i * 26, f"{fmt_tokens(tok)} ({pct:.0f}%)", 11, 500, "muted", anchor="end", num=True)
+    def _legend_svg(x, y, w, segs):
+        rows, ly = [], y
+        line, all_rows, end_x = [], [], 0
+        for name, tok, color, _ in segs:
+            s = _pct1(tok / r["total_tokens"] * 100 if r["total_tokens"] else 0)
+            iw = 12 + len(name) * 7.2 + 7.2 + len(s) * 7.2
+            px = end_x + 34 if line else 0
+            if line and px + iw > w:
+                all_rows.append(line)
+                line, px = [], 0
+            line.append((px, name, s, color))
+            end_x = px + iw
+        if line:
+            all_rows.append(line)
+        for ln in all_rows:
+            for px, name, s, color in ln:
+                lx = x + px
+                rows.append(f'<circle cx="{lx + 4.5:.1f}" cy="{ly - 3:.1f}" r="4.5" fill="{color}"/>')
+                rows.append(f'<text x="{lx + 14:.1f}" y="{ly:.1f}" font-size="12" font-family="{MONO}">'
+                            f'<tspan font-weight="500" class="text2">{esc(name)}</tspan>'
+                            f'<tspan class="muted"> {s}</tspan></text>')
+            ly += 20
+        return "".join(rows), ly - 20
 
-    # ===== 使用趋势（最近 30 天窗口：日柱 + 7日均线 + 拆分） =====
-    lines.extend(trend_section(r, PAL, L, X0, X1, YS))
+    text(X0, _bt, L["by_tool"], 11, 600, "muted", spacing="2")
+    text(X1, _bt, LAY["cap"], 10.5, 400, "faint", anchor="end", num=True)
+    lines.append(_seg_rects(X0, _bt + 10, CW, 10, LAY["tool_segs"]))
+    _lg, _leg_end = _legend_svg(X0, _bt + 40, CW, LAY["tool_segs"])
+    lines.append(_lg)
+
+    _div = _leg_end + 16
+    lines.append(f'<line x1="{X0}" y1="{_div}" x2="{X1}" y2="{_div}" stroke="{PAL["track"]}" stroke-width="1"/>')
+    text(X0, _div + 16, L["top_models"], 11, 600, "muted", spacing="2")
+    text(X1, _div + 16, LAY["cap"], 10.5, 400, "faint", anchor="end", num=True)
+    lines.append(_seg_rects(X0, _div + 26, CW, 10, LAY["model_segs"]))
+    _lg2, _leg_end2 = _legend_svg(X0, _div + 56, CW, LAY["model_segs"])
+    lines.append(_lg2)
 
     # ===== 页脚（右侧接管 whoami 卡退场后的 daemon LIVE 叙事） =====
-    lines.append(f'<line x1="{X0}" y1="{706 + YS}" x2="{X1}" y2="{706 + YS}" stroke="{PAL["track"]}" stroke-width="1"/>')
-    text(X0, 734 + YS, L["foot_stats"], 10.5, 400, "muted", num=True)
-    lines.append(f'<text x="{X1}" y="{734 + YS}" font-size="10.5" font-family="{MONO}" text-anchor="end">'
+    lines.append(f'<line x1="{X0}" y1="{LAY["foot_div"]}" x2="{X1}" y2="{LAY["foot_div"]}" stroke="{PAL["track"]}" stroke-width="1"/>')
+    text(X0, LAY["foot_text"], L["foot_stats"], 10.5, 400, "muted", num=True)
+    lines.append(f'<text x="{X1}" y="{LAY["foot_text"]}" font-size="10.5" font-family="{MONO}" text-anchor="end">'
                  f'<tspan fill="{PAL["liv"]}">{esc(L["live_note"])}</tspan>'
                  f'<tspan fill="{PAL["muted"]}"> · {esc(L["foot_updated"])} {now}</tspan></text>')
 
