@@ -4,10 +4,10 @@
 Engine cloned from the dahan8473 replica (gen_dahan_replica.py): terminal-card
 layout + CSS keyframes (pet idle frame animation, stepped fade-ins,
 prefers-reduced-motion collapse) with the subsetted IBM Plex Mono embedded
-when the build cache has it. Profile cards: pet (qinglong HD sprite, base64
-PNG frames from qinglong_hd_frames.py — the same <image>-swap mechanism as
-codefufuai's card; the 4px-block mosaic lives on in qinglong_frames.py, now
-only the IDLE_MS source of truth), stack. zh variants localize captions and
+when the build cache has it. Profile cards: pet (blossom HD sprite, base64
+PNG frames from blossom_hd_frames.py — the same <image>-swap mechanism as
+codefufuai's card; qinglong's frames live on retired in qinglong_hd_frames.py,
+the 4px-block mosaic in qinglong_frames.py), stack. zh variants localize captions and
 labels;
 terminal commands stay English in both languages. Also emits the standalone
 wall card (assets/wall{,-zh}-{dark,light}.svg): titlebar + `$ cat
@@ -33,7 +33,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from qinglong_hd_frames import BOX, IDLE_MS, PNGS  # noqa: E402
+from blossom_hd_frames import BOX, IDLE_MS, PNGS  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
@@ -104,12 +104,12 @@ ZAI_KNOCKOUT = (
 ZAI_DIAG = "24.3,7.1 13.14,22.91 5.7,22.91 16.86,7.1"
 
 PET = {
-    "name": "qinglong",
-    "url": "~/.codex/pets/fufu-qinglong",
+    "name": "blossom",
+    "url": "~/.codex/pets/fufu-blossom",
     "owner": "acfufu",
     "states": 9,
     "frames": 57,
-    "tags": "dragon / pixel / soft / mascot",
+    "tags": "blossom / pixel / soft / mascot",
 }
 
 WALL = [
@@ -154,10 +154,10 @@ def load_wall():
 STR = {
     "en": dict(
         aria="acfufu terminal profile card",
-        pet_desc="tiny jade dragon (fufu mint style)",
+        pet_desc="tiny mint-haired blossom (fufu mint style)",
         pet_meta=f"custom codex pet · owner: {PET['owner']} · codex v1 atlas",
         pet_states=f"{PET['states']} states · {PET['frames']} frames · tags: {PET['tags']}",
-        pet_mood="mood: idle · now: napping on a cloud",
+        pet_mood="mood: idle · now: tending the blossoms",
         pet_open="> installed at: ",
         stack_cap="by bytes · 30 public repos",  # 一次性测量（2026-09 github api），改行前先复测
         models_label="MODELS",
@@ -167,10 +167,10 @@ STR = {
     ),
     "zh": dict(
         aria="acfufu 终端画像卡",
-        pet_desc="Fufu Mint 风格小青龙",
+        pet_desc="薄荷花语小伙伴（Fufu Mint 风格）",
         pet_meta=f"自制 codex 宠物 · 主人：{PET['owner']} · codex v1 图集",
-        pet_states=f"{PET['states']} 种状态 · {PET['frames']} 帧 · 标签：青龙 / 像素 / 软萌 / 吉祥物",
-        pet_mood="心情：idle · 此刻：在云端打盹",
+        pet_states=f"{PET['states']} 种状态 · {PET['frames']} 帧 · 标签：花语 / 像素 / 软萌 / 吉祥物",
+        pet_mood="心情：idle · 此刻：在花间打盹",
         pet_open="> 安装于：",
         stack_cap="按字节 · 30 个公开仓库",
         models_label="模型",
@@ -232,7 +232,7 @@ def get_icon_paths():
 
 
 def pet_sprite(x, y, freeze=None):
-    """6-frame qinglong HD sprite: one <image> per base64 PNG, SMIL discrete
+    """6-frame blossom HD sprite: one <image> per base64 PNG, SMIL discrete
     opacity windows at the pack's own idle durations (IDLE_MS) — the same
     mechanism as codefufuai's pet card. freeze=K pins loop step K at t=0
     (negative begin) for screenshot forensics."""
@@ -306,7 +306,7 @@ def build(theme, zh=False, freeze=None):
     # ---- card 1: pet (y=2, h=212) ----
     y1, h1 = 2, 212
     card_rect(s, y1, h1)
-    titlebar(s, y1, "pets status qinglong", PET["url"])
+    titlebar(s, y1, "pets status blossom", PET["url"])
     s.append(pet_sprite(20, y1 + TB_H + 12, freeze))
     tx = 20 + BOX[0] + 34
     lines = [
