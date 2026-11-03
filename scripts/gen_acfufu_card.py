@@ -443,15 +443,25 @@ def build(theme, zh=False, slot="day", tier="calm", freeze=None):
     titlebar(s, y1, "pets status blossom", PET["url"])
     s.append(pet_scene(20, y1 + TB_H + 8, slot, tier, freeze))
     tx = 20 + BOX[0] + 34
+    # bake metadata — all real values known at generation time (no runtime
+    # SMIL clock to query, so no invented live numbers)
+    on_card = "idle (asleep)" if slot == "night" else \
+        "idle + " + "/".join(dict.fromkeys(st for st, _ in BEAT[slot][tier] if st != "idle"))
+    loop_s = sum(SLEEP_MS) / 1000 if slot == "night" else \
+        sum(sum(STATES[st][0]) * loops for st, loops in BEAT[slot][tier]) / 1000
+    baked = datetime.now(CST).strftime("%H:%M") + "+08"
     lines = [
         ("liv", f'[PET] <tspan fill="{C["title"]}" font-weight="700">{PET["name"]} · {esc(T["pet_desc"])}</tspan>'),
         ("ok", f"[ OK ] {esc(T['pet_meta'])}"),
         ("ok", f"[ OK ] {esc(T['pet_states'])}"),
         ("liv", f"[LIVE] {esc(T['pet_mood'])}"),
+        ("ok", f"[ OK ] baked {baked} · slot {slot} · tier {tier} · loop {loop_s:.1f}s"),
+        ("ok", f"[ OK ] on card: {on_card}"),
     ]
+    ty0 = y1 + TB_H + 26
     for i, (cls, body) in enumerate(lines):
-        s.append(f'<text class="{cls}" x="{tx}" y="{y1 + TB_H + 24 + i * 20}">{body}</text>')
-    s.append(f'<text x="{tx}" y="{y1 + TB_H + 24 + 4 * 20}" font-size="12.5" fill="{C["user"]}">'
+        s.append(f'<text class="{cls}" x="{tx}" y="{ty0 + i * 23}">{body}</text>')
+    s.append(f'<text x="{tx}" y="{ty0 + len(lines) * 23 + 4}" font-size="12.5" fill="{C["user"]}">'
              f'{esc(T["pet_open"])}{PET["url"]}</text>')
 
     # ---- card 2: stack (y=268, h=332) ----

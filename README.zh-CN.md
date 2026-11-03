@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-zh-dark.svg?v=1793738607">
-  <source media="(prefers-color-scheme: light)" srcset="assets/profile-zh-light.svg?v=1793738607">
-  <img src="assets/profile-zh-dark.svg?v=1793738607" width="100%" alt="acfufu：AI-native 开发工具、像素宠物和留言墙。">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-zh-dark.svg?v=1793739852">
+  <source media="(prefers-color-scheme: light)" srcset="assets/profile-zh-light.svg?v=1793739852">
+  <img src="assets/profile-zh-dark.svg?v=1793739852" width="100%" alt="acfufu：AI-native 开发工具、像素宠物和留言墙。">
 </picture>
 
 <picture>
