@@ -5,9 +5,13 @@ Engine cloned from the dahan8473 replica (gen_dahan_replica.py): terminal-card
 layout + CSS keyframes (pet idle frame animation, stepped fade-ins,
 prefers-reduced-motion collapse) with the subsetted IBM Plex Mono embedded
 when the build cache has it. Profile cards: pet (blossom HD sprite, base64
-PNG frames from blossom_hd_frames.py — the same <image>-swap mechanism as
-codefufuai's card; qinglong's frames live on retired in qinglong_hd_frames.py,
-the 4px-block mosaic in qinglong_frames.py), stack. zh variants localize captions and
+PNG frames from blossom_hd_frames.py — two SMIL clocks: frames flip at the
+pack's native durations inside each state, while a beat-sheet overlay walks
+the macro cycle flashing idle/waving/jumping/waiting; the slot is baked at
+generation time from Asia/Shanghai hours — night swaps idle's own keyTimes
+to hold the blink frame = asleep, zero extra bytes; qinglong's frames live
+on retired in qinglong_hd_frames.py, the 4px-block mosaic in
+qinglong_frames.py), stack. zh variants localize captions and
 labels;
 terminal commands stay English in both languages. Also emits the standalone
 wall card (assets/wall{,-zh}-{dark,light}.svg): titlebar + `$ cat
@@ -30,10 +34,11 @@ import re
 import sys
 import tempfile
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from blossom_hd_frames import BOX, IDLE_MS, PNGS  # noqa: E402
+from blossom_hd_frames import BOX, STATES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets"
@@ -43,7 +48,7 @@ CACHE = Path(tempfile.gettempdir()) / f"dahan-replica-cache-{getpass.getuser()}"
 REPO_CACHE = ROOT / "assets" / "gen-cache"  # vendored copy so CI never needs the network
 
 W = 960
-H = 564
+H = 602  # grew with the pet slot: shared 144x200 sprite bbox (+38 vs the 564 era)
 CARD_X, CARD_W, R = 4, 952, 12
 TB_H = 38
 
@@ -111,6 +116,48 @@ PET = {
     "frames": 57,
     "tags": "blossom / pixel / soft / mascot",
 }
+
+# pet macro-loop — two clocks. Frame clock: every state flips at the pack's
+# own animation-spec durations. State clock: a beat sheet walks the macro
+# cycle, flashing overlay states over the always-on idle base (segment =
+# integer native loops, gaps fall through to idle, never a blank). The slot
+# is BAKED at generation from Asia/Shanghai hours — fixed +08:00 offset, no
+# DST, and NEVER runner-local time (wall.yml CI runs in UTC).
+CST = timezone(timedelta(hours=8))
+SLEEP_MS = [600, 150, 150, 4000, 150, 800]  # night: idle's blink frame held = asleep
+
+# calm-tier beat sheets, phase 1; (state, native loops). failed is the
+# quiet-evening easter egg (phase 2 wires the intensity tier).
+BEAT = {
+    "morning": [("idle", 2), ("waving", 1), ("idle", 2), ("waving", 1),
+                ("idle", 3), ("jumping", 1), ("idle", 4)],
+    "day":     [("idle", 3), ("waving", 1), ("idle", 3), ("jumping", 1),
+                ("idle", 4), ("waiting", 1), ("idle", 5)],
+    "evening": [("idle", 3), ("waiting", 1), ("idle", 3), ("waiting", 1),
+                ("idle", 4), ("waving", 1), ("idle", 4)],
+}
+
+MOOD = {
+    "morning": ("mood: idle · now: morning greetings among the blossoms",
+                "心情：idle · 此刻：在花间道早安"),
+    "day":     ("mood: idle · now: tending the blossoms",
+                "心情：idle · 此刻：在花田里巡逻"),
+    "evening": ("mood: idle · now: waiting for the stars",
+                "心情：idle · 此刻：在花间等星星"),
+    "night":   ("mood: asleep · now: napping under the flowers (shh)",
+                "心情：asleep · 此刻：在花下睡着（嘘）"),
+}
+
+
+def current_slot():
+    h = datetime.now(CST).hour
+    if 6 <= h < 9:
+        return "morning"
+    if 9 <= h < 18:
+        return "day"
+    if 18 <= h < 22:
+        return "evening"
+    return "night"
 
 WALL = [
     ("Acfufu", "wall initialized", "Sep 7"),
@@ -231,21 +278,18 @@ def get_icon_paths():
     return icons
 
 
-def pet_sprite(x, y, freeze=None):
-    """6-frame blossom HD sprite: one <image> per base64 PNG, SMIL discrete
-    opacity windows at the pack's own idle durations (IDLE_MS) — the same
-    mechanism as codefufuai's pet card. freeze=K pins loop step K at t=0
-    (negative begin) for screenshot forensics."""
-    n = len(PNGS)
-    total_ms = sum(IDLE_MS)
-    kt = ";".join(f"{sum(IDLE_MS[:i]) / total_ms:.4f}" for i in range(n))
-    # pin at the MIDDLE of step freeze: negative begin exactly at the step's
-    # start lands on its end boundary, where discrete already flips to the
-    # next frame (f1/f2 froze identical that way)
-    begin = f' begin="{-((sum(IDLE_MS[:freeze]) + IDLE_MS[freeze] / 2) / 1000):.3f}s"' \
-        if freeze is not None else ""
-    out = [f'<g transform="translate({x},{y})">']
-    for fi, b64 in enumerate(PNGS):
+def _flip_images(ms, pngs, freeze_frame=None):
+    """One <image> per frame, SMIL discrete opacity at the given durations.
+    freeze_frame pins that loop step at t=0 (negative begin at the step's
+    midpoint — at the exact start the discrete flip already lands on the
+    next frame) for screenshot forensics."""
+    n = len(pngs)
+    total_ms = sum(ms)
+    kt = ";".join(f"{sum(ms[:i]) / total_ms:.5f}" for i in range(n))
+    begin = f' begin="{-((sum(ms[:freeze_frame]) + ms[freeze_frame] / 2) / 1000):.3f}s"' \
+        if freeze_frame is not None else ""
+    out = []
+    for fi, b64 in enumerate(pngs):
         base = "" if fi == 0 else ' opacity="0"'
         vals = ";".join("1" if k == fi else "0" for k in range(n))
         out.append(f'<image{base} width="{BOX[0]}" height="{BOX[1]}" '
@@ -253,6 +297,45 @@ def pet_sprite(x, y, freeze=None):
                    f'<animate attributeName="opacity" calcMode="discrete" '
                    f'values="{vals}" keyTimes="{kt}" dur="{total_ms}ms" '
                    f'repeatCount="indefinite"{begin}/></image>')
+    return out
+
+
+def pet_scene(x, y, slot, freeze=None):
+    """Idle base layer + beat-sheet overlay groups. freeze=(state, frame)
+    pins an overlay state visible and one of its frames at t=0 (two-level
+    negative begin: the group's macro window midpoint + the frame's native
+    step midpoint)."""
+    fstate, fframe = freeze if freeze else (None, None)
+    sheet = BEAT.get(slot, [])  # night: no overlays, idle sleeps in place
+    idle_ms = SLEEP_MS if slot == "night" else STATES["idle"][0]
+    out = [f'<g transform="translate({x},{y})">']
+    out += _flip_images(idle_ms, STATES["idle"][1],
+                        fframe if (fstate == "idle" or slot == "night") else None)
+    macro = sum(sum(STATES[st][0]) * loops for st, loops in sheet)
+    windows = {}  # state -> [(start_ms, end_ms)] on the macro cycle
+    t = 0
+    for st, loops in sheet:
+        cyc = sum(STATES[st][0]) * loops
+        if st != "idle":
+            windows.setdefault(st, []).append((t, t + cyc))
+        t += cyc
+    for st, wins in windows.items():
+        ms, pngs = STATES[st]
+        vals, kt = ["0"], [0.0]
+        for s0, s1 in wins:
+            vals += ["1", "0"]
+            kt += [s0 / macro, s1 / macro]
+        obegin = fbegin = ""
+        if fstate == st:
+            s0, s1 = wins[0]
+            obegin = f' begin="{-((s0 + (s1 - s0) / 2) / 1000):.3f}s"'
+            fbegin = True
+        out.append(f'<g opacity="0"><animate attributeName="opacity" '
+                   f'calcMode="discrete" values="{";".join(vals)}" '
+                   f'keyTimes="{";".join(f"{v:.5f}" for v in kt)}" '
+                   f'dur="{macro}ms" repeatCount="indefinite"{obegin}/>')
+        out += _flip_images(ms, pngs, fframe if fbegin else None)
+        out.append("</g>")
     out.append("</g>")
     return "".join(out)
 
@@ -293,21 +376,22 @@ def card_rect(s, y, h):
              f'fill="{C["card"]}" stroke="{C["border"]}"/>')
 
 
-def build(theme, zh=False, freeze=None):
+def build(theme, zh=False, slot="day", freeze=None):
     global C
     C = LIGHT if theme == "light" else DARK
-    T = STR["zh"] if zh else STR["en"]
+    T = dict(STR["zh"] if zh else STR["en"])
+    T["pet_mood"] = MOOD[slot][1 if zh else 0]
 
     s = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" role="img" '
              f'aria-label="{T["aria"]}">')
     s.append(f"<style>{font_face_css() + build_css()}</style>")
 
-    # ---- card 1: pet (y=2, h=212) ----
-    y1, h1 = 2, 212
+    # ---- card 1: pet (y=2, h=250; slot grew 144x160 -> 144x200 with the shared sprite bbox) ----
+    y1, h1 = 2, 250
     card_rect(s, y1, h1)
     titlebar(s, y1, "pets status blossom", PET["url"])
-    s.append(pet_sprite(20, y1 + TB_H + 12, freeze))
+    s.append(pet_scene(20, y1 + TB_H + 8, slot, freeze))
     tx = 20 + BOX[0] + 34
     lines = [
         ("liv", f'[PET] <tspan fill="{C["title"]}" font-weight="700">{PET["name"]} · {esc(T["pet_desc"])}</tspan>'),
@@ -320,8 +404,8 @@ def build(theme, zh=False, freeze=None):
     s.append(f'<text x="{tx}" y="{y1 + TB_H + 24 + 4 * 20}" font-size="12.5" fill="{C["user"]}">'
              f'{esc(T["pet_open"])}{PET["url"]}</text>')
 
-    # ---- card 2: stack (y=230, h=332) ----
-    y2, h2 = 230, 332
+    # ---- card 2: stack (y=268, h=332) ----
+    y2, h2 = 268, 332
     card_rect(s, y2, h2)
     titlebar(s, y2, "cat stack", T["stack_cap"])
     icons = get_icon_paths()
@@ -397,10 +481,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", type=Path, default=None,
                     help="default: assets/ (use preview dirs for scratch)")
-    ap.add_argument("--freeze", type=int, default=None, metavar="STEP",
-                    help="pin the pet sprite at loop step STEP (screenshot "
-                         "forensics; profile cards only)")
+    ap.add_argument("--slot", choices=("morning", "day", "evening", "night"),
+                    default=None, help="bake this beat sheet instead of the "
+                    "Asia/Shanghai clock slot (preview/forensics)")
+    ap.add_argument("--freeze", type=str, default=None, metavar="STATE,FRAME",
+                    help="pin the pet at overlay state STATE frame FRAME "
+                         "(e.g. waving,1; screenshot forensics; profile only)")
     a = ap.parse_args()
+    freeze = None
+    if a.freeze:
+        st, fr = a.freeze.split(",")
+        if st not in STATES:
+            ap.error(f"--freeze state must be one of {', '.join(STATES)}")
+        freeze = (st, int(fr))
+    slot = a.slot or current_slot()
     out = a.out_dir or OUT
     out.mkdir(parents=True, exist_ok=True)
     for kind, fn in (("profile", build), ("wall", build_wall)):
@@ -408,7 +502,7 @@ def main():
             for zh in (False, True):
                 name = f"{kind}-zh-{theme}.svg" if zh else f"{kind}-{theme}.svg"
                 p = out / name
-                kw = {"freeze": a.freeze} if kind == "profile" else {}
+                kw = {"slot": slot, "freeze": freeze} if kind == "profile" else {}
                 p.write_text(fn(theme, zh, **kw))
                 print(f"wrote {p} ({p.stat().st_size} bytes)")
 

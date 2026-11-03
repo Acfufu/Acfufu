@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1793734568">
-  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg?v=1793734568">
-  <img src="assets/profile-dark.svg?v=1793734568" width="100%" alt="acfufu: ai-native dev tools, a pixel pet, and a guestbook.">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1793738196">
+  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg?v=1793738196">
+  <img src="assets/profile-dark.svg?v=1793738196" width="100%" alt="acfufu: ai-native dev tools, a pixel pet, and a guestbook.">
 </picture>
 
 <picture>
