@@ -30,6 +30,7 @@ out/
 # Token stats daemon runtime state
 .token-stats-daemon.*
 .token-stats-refresh.lock
+.token-stats-pet-slot
 
 # Local agent scratch
 .mimosa/
