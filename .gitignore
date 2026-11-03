@@ -50,3 +50,6 @@ assets/replica-profile-*.svg
 
 # Video-agent-kit plugin workspace scratch
 .video_agent/
+
+# gh stats card API cache (numbers are baked into the public SVGs anyway)
+data/gh-stats.json

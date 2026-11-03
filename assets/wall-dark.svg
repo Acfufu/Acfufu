@@ -8,10 +8,22 @@
     .snlab{ font-size:9.5px; fill:#3fa060; }
     .wcat { font-size:14px; fill:#58a6ff; }
     .wmsg { font-size:14px; fill:#c9d1d9; }
+    .shdr  { font-size:12.5px; fill:#c9d1d9; }
+    .slab2 { font-size:11px; fill:#6e7f95; font-weight:600; letter-spacing:2; }
+    .scap  { font-size:10.5px; fill:#57606a; }
+    .hname { font-size:12.5px; fill:#e6edf3; font-weight:600; }
+    .hval  { font-size:12px; fill:#6e7f95; }
+    .sfoot { font-size:10.5px; fill:#6e7f95; }
+    .lgn   { font-size:12px; fill:#c9d1d9; font-weight:500; }
+    .bval  { font-size:15px; fill:#e6edf3; font-weight:700; }
+    .rv    { opacity:0; animation:on .01s steps(1) forwards; }
+    .hbar  { transform-box:fill-box; transform-origin:left center; animation:growx .45s ease-out backwards; }
     @keyframes on    { to { opacity:1; } }
+    @keyframes growx { from { transform:scaleX(0); } }
     @media (prefers-reduced-motion: reduce) {
       * { animation: none !important; }
-      .ok { opacity:1; }
+      .ok, .rv { opacity:1; }
+      .hbar { animation:none; }
     }
     </style>
 <rect x="4" y="2" width="952" height="38" rx="12" fill="#111826" stroke="#22406a"/>
