@@ -48,7 +48,7 @@ CACHE = Path(tempfile.gettempdir()) / f"dahan-replica-cache-{getpass.getuser()}"
 REPO_CACHE = ROOT / "assets" / "gen-cache"  # vendored copy so CI never needs the network
 
 W = 960
-H = 602  # grew with the pet slot: shared 144x200 sprite bbox (+38 vs the 564 era)
+H = 564  # card 1 back to 212 tall (codefufuai-whoami aligned): ground sprite 144x144 fills its slot
 CARD_X, CARD_W, R = 4, 952, 12
 TB_H = 38
 
@@ -131,21 +131,23 @@ SLEEP_MS = [600, 150, 150, 4000, 150, 800]  # night: idle's blink frame held = a
 MOOD_FILE = ROOT / "data" / "mood.json"
 TIERS = ("hot", "calm", "quiet")
 
-# beat sheets per (slot, tier); (state, native loops). failed is the
-# quiet-evening easter egg — the one state that trips mid-stargaze.
+# beat sheets per (slot, tier); (state, native loops). jumping is NOT cast:
+# its atlas apex reaches y=3 and would force a 200px slot with a permanent
+# 56px void over the idle pet (see blossom_hd_frames) — the tight
+# codefufuai-style card won. failed is the quiet-evening easter egg.
 BEAT = {
     "morning": {
-        "hot":   [("idle", 1), ("waving", 1), ("idle", 2), ("jumping", 1),
-                  ("idle", 2), ("waving", 1), ("idle", 3), ("jumping", 1), ("idle", 3)],
+        "hot":   [("idle", 1), ("waving", 1), ("idle", 2), ("waving", 1),
+                  ("idle", 3), ("waving", 1), ("idle", 3)],
         "calm":  [("idle", 2), ("waving", 1), ("idle", 2), ("waving", 1),
-                  ("idle", 3), ("jumping", 1), ("idle", 4)],
+                  ("idle", 3), ("waving", 1), ("idle", 4)],
         "quiet": [("idle", 3), ("waving", 1), ("idle", 4), ("waving", 1), ("idle", 5)],
     },
     "day": {
-        "hot":   [("idle", 2), ("jumping", 1), ("idle", 2), ("waving", 1),
-                  ("idle", 2), ("jumping", 1), ("idle", 3), ("waiting", 1), ("idle", 3)],
-        "calm":  [("idle", 3), ("waving", 1), ("idle", 3), ("jumping", 1),
-                  ("idle", 4), ("waiting", 1), ("idle", 5)],
+        "hot":   [("idle", 2), ("waving", 1), ("idle", 2), ("waiting", 1),
+                  ("idle", 2), ("waving", 1), ("idle", 3), ("waiting", 1), ("idle", 3)],
+        "calm":  [("idle", 3), ("waving", 1), ("idle", 3), ("waiting", 1),
+                  ("idle", 4), ("waving", 1), ("idle", 5)],
         "quiet": [("idle", 5), ("waving", 1), ("idle", 5), ("waiting", 1), ("idle", 6)],
     },
     "evening": {
@@ -159,14 +161,14 @@ BEAT = {
 }
 
 MOOD = {
-    ("morning", "hot"): ("mood: playful · now: bouncing good-mornings",
-                         "心情：playful · 此刻：蹦跳着道早安"),
+    ("morning", "hot"): ("mood: playful · now: chirpy good-mornings",
+                         "心情：playful · 此刻：元气满满道早安"),
     ("morning", "calm"): ("mood: idle · now: morning greetings among the blossoms",
                           "心情：idle · 此刻：在花间道早安"),
     ("morning", "quiet"): ("mood: idle · now: a slow sleepy hello",
                            "心情：idle · 此刻：懒洋洋地说早安"),
-    ("day", "hot"): ("mood: playful · now: sprinting the flower field",
-                     "心情：playful · 此刻：在花田里跑酷"),
+    ("day", "hot"): ("mood: playful · now: frolicking in the flower field",
+                     "心情：playful · 此刻：在花田里撒欢"),
     ("day", "calm"): ("mood: idle · now: tending the blossoms",
                       "心情：idle · 此刻：在花田里巡逻"),
     ("day", "quiet"): ("mood: sleepy · now: dozing among the blossoms",
@@ -437,11 +439,12 @@ def build(theme, zh=False, slot="day", tier="calm", freeze=None):
              f'aria-label="{T["aria"]}">')
     s.append(f"<style>{font_face_css() + build_css()}</style>")
 
-    # ---- card 1: pet (y=2, h=250; slot grew 144x160 -> 144x200 with the shared sprite bbox) ----
-    y1, h1 = 2, 250
+    # ---- card 1: pet (y=2, h=212 — same geometry as codefufuai's whoami card;
+    #      ground sprite 144x144 content fills the slot, head ~16px under the titlebar) ----
+    y1, h1 = 2, 212
     card_rect(s, y1, h1)
     titlebar(s, y1, "pets status blossom", PET["url"])
-    s.append(pet_scene(20, y1 + TB_H + 8, slot, tier, freeze))
+    s.append(pet_scene(20, y1 + TB_H + 16, slot, tier, freeze))
     tx = 20 + BOX[0] + 34
     # bake metadata — all real values known at generation time (no runtime
     # SMIL clock to query, so no invented live numbers)
@@ -458,14 +461,14 @@ def build(theme, zh=False, slot="day", tier="calm", freeze=None):
         ("ok", f"[ OK ] baked {baked} · slot {slot} · tier {tier} · loop {loop_s:.1f}s"),
         ("ok", f"[ OK ] on card: {on_card}"),
     ]
-    ty0 = y1 + TB_H + 26
+    ty0 = y1 + TB_H + 24
     for i, (cls, body) in enumerate(lines):
-        s.append(f'<text class="{cls}" x="{tx}" y="{ty0 + i * 23}">{body}</text>')
-    s.append(f'<text x="{tx}" y="{ty0 + len(lines) * 23 + 4}" font-size="12.5" fill="{C["user"]}">'
+        s.append(f'<text class="{cls}" x="{tx}" y="{ty0 + i * 20}">{body}</text>')
+    s.append(f'<text x="{tx}" y="{ty0 + len(lines) * 20 + 4}" font-size="12.5" fill="{C["user"]}">'
              f'{esc(T["pet_open"])}{PET["url"]}</text>')
 
-    # ---- card 2: stack (y=268, h=332) ----
-    y2, h2 = 268, 332
+    # ---- card 2: stack (y=230, h=332) ----
+    y2, h2 = 230, 332
     card_rect(s, y2, h2)
     titlebar(s, y2, "cat stack", T["stack_cap"])
     icons = get_icon_paths()
@@ -559,6 +562,10 @@ def main():
         freeze = (st, int(fr))
     slot = a.slot or current_slot()
     tier = a.tier or load_tier()
+    if freeze and freeze[0] != "idle":
+        cast = {s for s, _ in BEAT[slot][tier]} if slot in BEAT else set()
+        if freeze[0] not in cast:
+            ap.error(f"--freeze {freeze[0]} is not cast by the {slot}/{tier} beat sheet")
     print(f"slot={slot} tier={tier}")
     out = a.out_dir or OUT
     out.mkdir(parents=True, exist_ok=True)
