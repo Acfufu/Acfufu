@@ -122,30 +122,67 @@ PET = {
 # cycle, flashing overlay states over the always-on idle base (segment =
 # integer native loops, gaps fall through to idle, never a blank). The slot
 # is BAKED at generation from Asia/Shanghai hours — fixed +08:00 offset, no
-# DST, and NEVER runner-local time (wall.yml CI runs in UTC).
+# DST, and NEVER runner-local time (wall.yml CI runs in UTC). The intensity
+# tier comes from data/mood.json (written by the token-stats daemon from
+# yesterday's tokens vs their 30-day median); missing/stale/invalid falls
+# back to calm — the schedule degrades, never breaks.
 CST = timezone(timedelta(hours=8))
 SLEEP_MS = [600, 150, 150, 4000, 150, 800]  # night: idle's blink frame held = asleep
+MOOD_FILE = ROOT / "data" / "mood.json"
+TIERS = ("hot", "calm", "quiet")
 
-# calm-tier beat sheets, phase 1; (state, native loops). failed is the
-# quiet-evening easter egg (phase 2 wires the intensity tier).
+# beat sheets per (slot, tier); (state, native loops). failed is the
+# quiet-evening easter egg — the one state that trips mid-stargaze.
 BEAT = {
-    "morning": [("idle", 2), ("waving", 1), ("idle", 2), ("waving", 1),
-                ("idle", 3), ("jumping", 1), ("idle", 4)],
-    "day":     [("idle", 3), ("waving", 1), ("idle", 3), ("jumping", 1),
-                ("idle", 4), ("waiting", 1), ("idle", 5)],
-    "evening": [("idle", 3), ("waiting", 1), ("idle", 3), ("waiting", 1),
-                ("idle", 4), ("waving", 1), ("idle", 4)],
+    "morning": {
+        "hot":   [("idle", 1), ("waving", 1), ("idle", 2), ("jumping", 1),
+                  ("idle", 2), ("waving", 1), ("idle", 3), ("jumping", 1), ("idle", 3)],
+        "calm":  [("idle", 2), ("waving", 1), ("idle", 2), ("waving", 1),
+                  ("idle", 3), ("jumping", 1), ("idle", 4)],
+        "quiet": [("idle", 3), ("waving", 1), ("idle", 4), ("waving", 1), ("idle", 5)],
+    },
+    "day": {
+        "hot":   [("idle", 2), ("jumping", 1), ("idle", 2), ("waving", 1),
+                  ("idle", 2), ("jumping", 1), ("idle", 3), ("waiting", 1), ("idle", 3)],
+        "calm":  [("idle", 3), ("waving", 1), ("idle", 3), ("jumping", 1),
+                  ("idle", 4), ("waiting", 1), ("idle", 5)],
+        "quiet": [("idle", 5), ("waving", 1), ("idle", 5), ("waiting", 1), ("idle", 6)],
+    },
+    "evening": {
+        "hot":   [("idle", 2), ("waiting", 1), ("idle", 2), ("waving", 1),
+                  ("idle", 3), ("waiting", 1), ("idle", 3), ("waving", 1), ("idle", 3)],
+        "calm":  [("idle", 3), ("waiting", 1), ("idle", 3), ("waiting", 1),
+                  ("idle", 4), ("waving", 1), ("idle", 4)],
+        "quiet": [("idle", 4), ("waiting", 1), ("idle", 4), ("waving", 1),
+                  ("idle", 4), ("failed", 1), ("idle", 4)],
+    },
 }
 
 MOOD = {
-    "morning": ("mood: idle · now: morning greetings among the blossoms",
-                "心情：idle · 此刻：在花间道早安"),
-    "day":     ("mood: idle · now: tending the blossoms",
-                "心情：idle · 此刻：在花田里巡逻"),
-    "evening": ("mood: idle · now: waiting for the stars",
-                "心情：idle · 此刻：在花间等星星"),
-    "night":   ("mood: asleep · now: napping under the flowers (shh)",
-                "心情：asleep · 此刻：在花下睡着（嘘）"),
+    ("morning", "hot"): ("mood: playful · now: bouncing good-mornings",
+                         "心情：playful · 此刻：蹦跳着道早安"),
+    ("morning", "calm"): ("mood: idle · now: morning greetings among the blossoms",
+                          "心情：idle · 此刻：在花间道早安"),
+    ("morning", "quiet"): ("mood: idle · now: a slow sleepy hello",
+                           "心情：idle · 此刻：懒洋洋地说早安"),
+    ("day", "hot"): ("mood: playful · now: sprinting the flower field",
+                     "心情：playful · 此刻：在花田里跑酷"),
+    ("day", "calm"): ("mood: idle · now: tending the blossoms",
+                      "心情：idle · 此刻：在花田里巡逻"),
+    ("day", "quiet"): ("mood: sleepy · now: dozing among the blossoms",
+                       "心情：sleepy · 此刻：在花间打盹"),
+    ("evening", "hot"): ("mood: lively · now: chasing the last sunbeams",
+                         "心情：lively · 此刻：追着晚霞跑"),
+    ("evening", "calm"): ("mood: idle · now: waiting for the stars",
+                          "心情：idle · 此刻：在花间等星星"),
+    ("evening", "quiet"): ("mood: wistful · now: stargazing (mind the step)",
+                           "心情：wistful · 此刻：等星星时摔了一跤"),
+    ("night", "hot"): ("mood: asleep · now: napping under the flowers (shh)",
+                       "心情：asleep · 此刻：在花下睡着（嘘）"),
+    ("night", "calm"): ("mood: asleep · now: napping under the flowers (shh)",
+                        "心情：asleep · 此刻：在花下睡着（嘘）"),
+    ("night", "quiet"): ("mood: asleep · now: napping under the flowers (shh)",
+                         "心情：asleep · 此刻：在花下睡着（嘘）"),
 }
 
 
@@ -158,6 +195,19 @@ def current_slot():
     if 18 <= h < 22:
         return "evening"
     return "night"
+
+
+def load_tier():
+    """当日强度档（hot/calm/quiet），读 token-stats 守护写的 data/mood.json。
+    缺失 / 非当日 / 坏行一律回退 calm：外部数据只降级观感，不弄坏卡片。"""
+    try:
+        d = json.loads(MOOD_FILE.read_text())
+    except Exception:
+        return "calm"
+    today = datetime.now(CST).date().isoformat()
+    if isinstance(d, dict) and d.get("date") == today and d.get("tier") in TIERS:
+        return d["tier"]
+    return "calm"
 
 WALL = [
     ("Acfufu", "wall initialized", "Sep 7"),
@@ -300,13 +350,13 @@ def _flip_images(ms, pngs, freeze_frame=None):
     return out
 
 
-def pet_scene(x, y, slot, freeze=None):
+def pet_scene(x, y, slot, tier, freeze=None):
     """Idle base layer + beat-sheet overlay groups. freeze=(state, frame)
     pins an overlay state visible and one of its frames at t=0 (two-level
     negative begin: the group's macro window midpoint + the frame's native
     step midpoint)."""
     fstate, fframe = freeze if freeze else (None, None)
-    sheet = BEAT.get(slot, [])  # night: no overlays, idle sleeps in place
+    sheet = BEAT[slot][tier] if slot in BEAT else []  # night: no overlays, idle sleeps
     idle_ms = SLEEP_MS if slot == "night" else STATES["idle"][0]
     out = [f'<g transform="translate({x},{y})">']
     out += _flip_images(idle_ms, STATES["idle"][1],
@@ -376,11 +426,11 @@ def card_rect(s, y, h):
              f'fill="{C["card"]}" stroke="{C["border"]}"/>')
 
 
-def build(theme, zh=False, slot="day", freeze=None):
+def build(theme, zh=False, slot="day", tier="calm", freeze=None):
     global C
     C = LIGHT if theme == "light" else DARK
     T = dict(STR["zh"] if zh else STR["en"])
-    T["pet_mood"] = MOOD[slot][1 if zh else 0]
+    T["pet_mood"] = MOOD.get((slot, tier), MOOD[(slot, "calm")])[1 if zh else 0]
 
     s = []
     s.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" role="img" '
@@ -391,7 +441,7 @@ def build(theme, zh=False, slot="day", freeze=None):
     y1, h1 = 2, 250
     card_rect(s, y1, h1)
     titlebar(s, y1, "pets status blossom", PET["url"])
-    s.append(pet_scene(20, y1 + TB_H + 8, slot, freeze))
+    s.append(pet_scene(20, y1 + TB_H + 8, slot, tier, freeze))
     tx = 20 + BOX[0] + 34
     lines = [
         ("liv", f'[PET] <tspan fill="{C["title"]}" font-weight="700">{PET["name"]} · {esc(T["pet_desc"])}</tspan>'),
@@ -484,6 +534,9 @@ def main():
     ap.add_argument("--slot", choices=("morning", "day", "evening", "night"),
                     default=None, help="bake this beat sheet instead of the "
                     "Asia/Shanghai clock slot (preview/forensics)")
+    ap.add_argument("--tier", choices=TIERS, default=None,
+                    help="bake this intensity tier instead of data/mood.json "
+                    "(preview/forensics)")
     ap.add_argument("--freeze", type=str, default=None, metavar="STATE,FRAME",
                     help="pin the pet at overlay state STATE frame FRAME "
                          "(e.g. waving,1; screenshot forensics; profile only)")
@@ -495,6 +548,8 @@ def main():
             ap.error(f"--freeze state must be one of {', '.join(STATES)}")
         freeze = (st, int(fr))
     slot = a.slot or current_slot()
+    tier = a.tier or load_tier()
+    print(f"slot={slot} tier={tier}")
     out = a.out_dir or OUT
     out.mkdir(parents=True, exist_ok=True)
     for kind, fn in (("profile", build), ("wall", build_wall)):
@@ -502,7 +557,7 @@ def main():
             for zh in (False, True):
                 name = f"{kind}-zh-{theme}.svg" if zh else f"{kind}-{theme}.svg"
                 p = out / name
-                kw = {"slot": slot, "freeze": freeze} if kind == "profile" else {}
+                kw = {"slot": slot, "tier": tier, "freeze": freeze} if kind == "profile" else {}
                 p.write_text(fn(theme, zh, **kw))
                 print(f"wrote {p} ({p.stat().st_size} bytes)")
 

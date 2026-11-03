@@ -1350,6 +1350,8 @@ def main():
     ap.add_argument("--json", action="store_true", help="输出聚合 JSON")
     ap.add_argument("--out", default=OUT_DEFAULT)
     ap.add_argument("--once", action="store_true", help="只同步一次，不启动守护")
+    ap.add_argument("--pet-once", action="store_true",
+                    help="重烤画像卡（当前时段）并推送；守护在槽位翻转时调用")
     ap.add_argument("--stop", action="store_true", help="停止后台守护")
     ap.add_argument("--interval", type=float, default=24.0, help="守护同步间隔（小时）")
     ap.add_argument("--no-sync", action="store_true", help="只生成 SVG，不提交/推送 GitHub")
@@ -1362,6 +1364,9 @@ def main():
     if args.stop:
         stop_daemon()
         return
+
+    if args.pet_once:
+        sys.exit(_pet_once())
 
     r = aggregate()
     if args.json:
@@ -1398,6 +1403,7 @@ def main():
             print(f"✅ 已生成 {name}")
         with open(args.out, "w") as f:  # 默认输出 = 英文 dark 版，兼容旧引用
             f.write(svg_dark)
+        write_mood(r)  # 宠物心情档（data/mood.json），随本轮 git_sync 入库
         print(f"   tokens: {fmt_tokens(r['total_tokens'])} | cost: ${r['total_cost']:,.0f} | conversations: {r['conversations']:,}")
         print(f"   cached: {r['stats']['cached']/max(sum(r['stats'].values()),1)*100:.0f}% | peak: {r['peak_day']} {fmt_tokens(r['peak_day_tokens'])}")
         print(f"   by agent: {', '.join(f'{k} {fmt_tokens(v)}' for k, v in r['by_agent'].items())}")
@@ -1487,6 +1493,82 @@ def _unpushed_commits():
 
 
 README_FILES = ("README.md", "README.zh-CN.md")
+
+# ============ 宠物槽位/心情（画像卡烘焙的数据与调度信号） ============
+_CST = datetime.timezone(datetime.timedelta(hours=8))  # 固定偏移：中国无夏令时
+MOOD_FILE = os.path.join(REPO_DIR, "data", "mood.json")
+PET_SLOT_FILE = os.path.join(REPO_DIR, ".token-stats-pet-slot")
+PET_FILES = ("assets/profile-dark.svg", "assets/profile-light.svg",
+             "assets/profile-zh-dark.svg", "assets/profile-zh-light.svg",
+             "data/mood.json")
+
+
+def _pet_slot():
+    """当前 Asia/Shanghai 时段（与 gen_acfufu_card.current_slot 同口径）。
+    有意复制而非 import：daemon 只要这 4 个数字，不背画像卡的渲染 import。"""
+    h = datetime.datetime.now(_CST).hour
+    return "morning" if 6 <= h < 9 else "day" if 9 <= h < 18 else "evening" if 18 <= h < 22 else "night"
+
+
+def _pet_tier(r):
+    """昨日 token vs 之前 30 天中位数 → hot/calm/quiet。
+    无昨日或无历史 → calm（情绪缺失回退安静，不猜）。"""
+    daily = _parse_daily(r)
+    yesterday = datetime.datetime.now(_CST).date() - datetime.timedelta(days=1)
+    yv = daily.get(yesterday)
+    if yv is None:
+        return "calm"
+    hist = sorted(v for k, v in daily.items() if k < yesterday)[-30:]
+    med = statistics.median(hist) if hist else 0
+    if med <= 0:
+        return "hot" if yv > 0 else "calm"
+    return "hot" if yv >= 2 * med else "quiet" if yv <= 0.3 * med else "calm"
+
+
+def write_mood(r):
+    """data/mood.json：画像卡烘焙的强度档（gen_acfufu_card 读，缺失/过期
+    自回退 calm）。原子写，随 git_sync 入库——wall CI 重生成读同一份。"""
+    yesterday = datetime.datetime.now(_CST).date() - datetime.timedelta(days=1)
+    payload = {"date": str(yesterday + datetime.timedelta(days=1)),
+               "tier": _pet_tier(r),
+               "tokens": _parse_daily(r).get(yesterday, 0)}
+    tmp = f"{MOOD_FILE}.{os.getpid()}.tmp"
+    with open(tmp, "w") as f:
+        json.dump(payload, f, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, MOOD_FILE)
+    print(f"   mood: {payload['tier']} (yesterday {fmt_tokens(payload['tokens'])})")
+
+
+def _pet_slot_last():
+    try:
+        with open(PET_SLOT_FILE) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def _pet_once():
+    """槽位翻转的轻量周期：重烤画像卡（此刻时段+当日档）→ git_sync。
+    持刷新锁防与 --once 并发写；锁被占则本 tick 跳过（60s 后重试）。
+    槽位状态文件只在卡片真正重生成后写入——失败留待下个 tick。"""
+    lock = _refresh_lock()
+    if lock is None:
+        print("   另一刷新在跑，槽位重烤跳过（下轮 tick 重试）", flush=True)
+        return 1
+    try:
+        slot = _pet_slot()
+        r = subprocess.run([sys.executable, os.path.join(REPO_DIR, "scripts", "gen_acfufu_card.py")],
+                           timeout=120)
+        if r.returncode != 0:
+            raise RuntimeError(f"gen_acfufu_card 退出码 {r.returncode}")
+        with open(PET_SLOT_FILE, "w") as f:
+            f.write(slot + "\n")
+        git_sync(message=f"chore: bake pet slot {slot}")
+        print(f"   pet slot baked: {slot}", flush=True)
+    finally:
+        os.close(lock)
+    return 0
 # (属性, 文件名)：README 里引用的图片（GitHub 重写相对路径时保留 query）。
 # 画像卡与 wall 卡纳入 bump：它们由 wall 管线低频再生成，camo 缓存同样按 URL 命中。
 _README_IMGS = (
@@ -1570,32 +1652,30 @@ def _heal_divergence():
             return
 
 
-def git_sync():
-    """提交 SVG/README 变更并推送。
+def git_sync(message="chore: refresh token stats"):
+    """提交管线文件（token 卡/画像卡/mood/README）变更并推送。
 
-    - 工作区或暂存区有变更（SVG 或 README）→ 重写 README 的 ?v= 缓存参数 → commit；
+    - 工作区或暂存区有变更 → 重写 README 的 ?v= 缓存参数 → commit；
       只看工作区会漏掉"add 成功但 commit 失败"的暂存遗留（此后每轮误判无变化，永久卡死）
     - commit 失败回滚暂存让下轮重新看见 dirty，异常上抛由 main 兜底
     - 存在未推送提交（含上次推送失败遗留）→ push（90s 超时），同周期内退避重试 3 次，
       每次失败后先尝试 rebase 自愈远端分叉；仍失败则留到下轮周期继续重试
     """
-    svg_dirty = subprocess.run(["git", "diff", "--quiet", "--", "token-stats*.svg"]).returncode != 0
-    readme_dirty = subprocess.run(["git", "diff", "--quiet", "--", "README.md", "README.zh-CN.md"]).returncode != 0
-    svg_staged = subprocess.run(["git", "diff", "--cached", "--quiet", "--", "token-stats*.svg"]).returncode != 0
-    readme_staged = subprocess.run(["git", "diff", "--cached", "--quiet", "--", "README.md", "README.zh-CN.md"]).returncode != 0
-    if not (svg_dirty or readme_dirty or svg_staged or readme_staged):
+    pipe = ("token-stats*.svg",) + PET_FILES + README_FILES
+    def _dirty(cached=False):
+        cmd = ["git", "diff", "--quiet"] + (["--cached"] if cached else []) + ["--", *pipe]
+        return subprocess.run(cmd).returncode != 0
+    if not (_dirty() or _dirty(cached=True)):
         print("   无数据变化，跳过提交")
     else:
         _bump_readme_cache_bust(int(time.time()))
-        subprocess.run(["git", "add", "token-stats*.svg", "README.md", "README.zh-CN.md"], check=True)
+        subprocess.run(["git", "add", *pipe], check=True)
         try:
             # pathspec 限定：commit 只收本管线文件，不扫进用户手工暂存的无关内容
-            subprocess.run(["git", "commit", "-m", "chore: refresh token stats", "--",
-                            "token-stats*.svg", "README.md", "README.zh-CN.md"], check=True)
+            subprocess.run(["git", "commit", "-m", message, "--", *pipe], check=True)
         except subprocess.CalledProcessError:
             # 只撤销本管线文件的暂存：不带 pathspec 的 reset 会误伤手工暂存的无关文件
-            subprocess.run(["git", "reset", "-q", "HEAD", "--",
-                            "token-stats*.svg", "README.md", "README.zh-CN.md"], check=False)
+            subprocess.run(["git", "reset", "-q", "HEAD", "--", *pipe], check=False)
             raise
         print("   已提交，推送中…")
     if _unpushed_commits() <= 0:
@@ -1659,6 +1739,14 @@ def daemon_loop(interval_hours, lock_fd):
             time.sleep(CHECK_EVERY)
             if not os.path.exists(os.path.join(REPO_DIR, ".git")):
                 break
+            # 槽位翻转探测：画像卡的时段烤在生成时刻（SMIL 无真实时钟可用），
+            # 守护每 60s 对表，翻转即轻量重烤（--pet-once 持刷新锁，与 --once 互斥）
+            try:
+                if _pet_slot() != _pet_slot_last():
+                    subprocess.run([sys.executable, os.path.abspath(__file__), "--pet-once"],
+                                   timeout=600)
+            except Exception as e:
+                print(f"槽位重烤失败（下一 tick 重试）: {e}", flush=True)
         if not os.path.exists(os.path.join(REPO_DIR, ".git")):
             print("仓库已删除，守护退出", flush=True)
             break
