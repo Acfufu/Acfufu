@@ -53,6 +53,8 @@ import time
 import urllib.request
 from collections import deque
 
+from scripts.card_motion import animate_card
+
 # ============ 配置 ============
 REPO_DIR = os.path.dirname(os.path.abspath(__file__))
 LITELLM_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
@@ -1320,7 +1322,7 @@ def svg_card(r, dark=True, zh=False, live=None):
                  f'<tspan fill="{PAL["liv"]}">{esc(L["live_note"])}</tspan>'
                  f'<tspan fill="{PAL["muted"]}"> · {esc(L["foot_updated"])} {now}</tspan></text>')
 
-    return "\n".join(lines) + "\n</svg>\n"
+    return animate_card("\n".join(lines) + "\n</svg>\n", "token", "dark" if dark else "light")
 
 
 # ============ main ============

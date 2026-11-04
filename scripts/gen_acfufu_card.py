@@ -48,6 +48,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from card_motion import animate_card
 from blossom_hd_frames import BOX, STATES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -767,7 +768,7 @@ def build(theme, zh=False, slot="day", tier="calm", freeze=None):
              f'fill="{C["green"]}"/>')
 
     s.append("</svg>")
-    return "\n".join(s)
+    return animate_card("\n".join(s), "profile", theme)
 
 
 def build_wall(theme, zh=False):
@@ -790,7 +791,7 @@ def build_wall(theme, zh=False):
         s.append(f'<text class="wmsg" x="26" y="{y + 80 + i * 17}">'
                  f'@{esc(truncate(user, 20))}: {esc(truncate(msg, 40))}  ({esc(truncate(date, 12))})</text>')
     s.append("</svg>")
-    return "\n".join(s)
+    return animate_card("\n".join(s), "wall", theme)
 
 
 def main():

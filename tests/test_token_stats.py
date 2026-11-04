@@ -353,6 +353,18 @@ class TestSvg(unittest.TestCase):
             self.assertIn("123K", svg)
             self.assertIn("$1.4K", svg)
 
+    def test_empty_activity_keeps_legends_without_starting_a_snake(self):
+        r = self._today_window()
+        r["daily"] = []
+        for dark in (True, False):
+            root = ET.fromstring(token_stats.svg_card(r, dark=dark, live=False))
+            text = " ".join(root.itertext())
+            self.assertIn("BY TOOL", text)
+            self.assertIn("TOP MODELS", text)
+            self.assertIn("GPT-5.6", text)
+            self.assertNotIn("READY", [e.text for e in root.iter()])
+            self.assertEqual(root.get("width"), "960")
+
     def test_dark_light_palettes_differ(self):
         dark = token_stats.svg_card(self._today_window(), dark=True)
         light = token_stats.svg_card(self._today_window(), dark=False)

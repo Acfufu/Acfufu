@@ -26,13 +26,24 @@
       .hbar { animation:none; }
     }
     </style>
-<rect x="4" y="2" width="952" height="38" rx="12" fill="#f6f8fa" stroke="#a9c4e4"/>
-<circle cx="24" cy="21" r="5.5" fill="#ff5f57"/>
-<circle cx="42" cy="21" r="5.5" fill="#febc2e"/>
-<circle cx="60" cy="21" r="5.5" fill="#28c840"/>
+<rect x="4" y="2" width="952" height="38" rx="12" fill="#f6f8fa" stroke="#a9c4e4" />
+<circle cx="24" cy="21" r="5.5" fill="#ff5f57" />
+<circle cx="42" cy="21" r="5.5" fill="#febc2e" />
+<circle cx="60" cy="21" r="5.5" fill="#28c840" />
 <text x="86" y="27.2"><tspan fill="#0969da" font-weight="700">acfufu@farrell-z</tspan><tspan fill="#6e7f95"> ~ % </tspan><tspan fill="#1f2328">wall</tspan></text>
 <text x="936" y="27.2" fill="#6e7f95" text-anchor="end">leave a message</text>
-<text class="wcat" x="14" y="60">$ cat /var/log/wall</text>
-<text class="snlab" x="196" y="60">[wall] open a pre-filled issue - your message lands here</text>
-<text class="wmsg" x="26" y="82">@Acfufu: wall initialized  (Sep 7)</text>
-</svg>
+<g class="card-reveal" style="--delay:0.26s"><text class="wcat" x="14" y="60">$ cat /var/log/wall</text>
+</g><g class="card-reveal" style="--delay:0.59s"><text class="snlab" x="196" y="60">[wall] open a pre-filled issue - your message lands here</text>
+</g><g class="card-reveal" style="--delay:0.92s"><text class="wmsg" x="26" y="82">@Acfufu: wall initialized  (Sep 7)</text>
+</g><style>
+.card-reveal {opacity:1;animation:card-on .01s step-start backwards;animation-delay:var(--delay,0s)}
+.card-bar {transform-box:fill-box;transform-origin:left center;animation:card-grow .95s ease-out backwards;animation-delay:var(--delay,0s)}
+.card-column {transform-box:fill-box;transform-origin:center bottom;animation:card-rise .95s ease-out backwards;animation-delay:var(--delay,0s)}
+@keyframes card-on {from {opacity:0} to {opacity:1}}
+/* A visible resting state avoids steps(1,end) rounding below the final step. */
+.ok, .rv {opacity:1;animation-fill-mode:backwards;animation-timing-function:step-start}
+@keyframes on {from {opacity:0} to {opacity:1}}
+@keyframes card-grow {from {transform:scaleX(0)}}
+@keyframes card-rise {from {transform:scaleY(0)}}
+@media(prefers-reduced-motion:reduce){.card-reveal{opacity:1;animation:none!important}.card-bar,.card-column{animation:none!important}}
+</style></svg>
