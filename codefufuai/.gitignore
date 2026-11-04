@@ -1,8 +1,0 @@
-# Python
-__pycache__/
-*.py[cod]
-
-# scratch
-*.tmp
-.DS_Store
-preview/

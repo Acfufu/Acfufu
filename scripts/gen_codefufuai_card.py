@@ -1,1 +1,0 @@
-../codefufuai/scripts/gen_codefufuai_card.py
