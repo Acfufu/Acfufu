@@ -5,9 +5,8 @@ Engine cloned from the dahan8473 replica (gen_dahan_replica.py): terminal-card
 layout + CSS keyframes (pet idle frame animation, stepped fade-ins,
 prefers-reduced-motion collapse) with the subsetted IBM Plex Mono embedded
 when the build cache has it. Profile cards: pet (blossom HD sprite, base64
-PNG frames from blossom_hd_frames.py — two SMIL clocks: frames flip at the
-pack's native durations inside each state, while a beat-sheet overlay walks
-the macro cycle flashing idle/waving/jumping/waiting; the slot is baked at
+PNG frames from blossom_hd_frames.py — a shared SMIL timeline plays frames at the
+pack's native durations while a beat sheet selects idle/waving/waiting; the slot is baked at
 generation time from Asia/Shanghai hours — night swaps idle's own keyTimes
 to hold the blink frame = asleep, zero extra bytes) and gh stats.
 
@@ -126,10 +125,8 @@ PET = {
     "tags": "blossom / pixel / soft / mascot",
 }
 
-# pet macro-loop — two clocks. Frame clock: every state flips at the pack's
-# own animation-spec durations. State clock: a beat sheet walks the macro
-# cycle, flashing overlay states over the always-on idle base (segment =
-# integer native loops, gaps fall through to idle, never a blank). The slot
+# pet macro-loop — one clock. The beat sheet plays each state at the pack's
+# native frame durations, restarting each segment at its first frame. The slot
 # is BAKED at generation from Asia/Shanghai hours — fixed +08:00 offset, no
 # DST, and NEVER runner-local time (wall.yml CI runs in UTC). The intensity
 # tier comes from data/mood.json (written by the token-stats daemon from
@@ -477,65 +474,66 @@ def font_face_css():
     return "".join(parts)
 
 
-def _flip_images(ms, pngs, freeze_frame=None):
-    """One <image> per frame, SMIL discrete opacity at the given durations.
-    freeze_frame pins that loop step at t=0 (negative begin at the step's
-    midpoint — at the exact start the discrete flip already lands on the
-    next frame) for screenshot forensics."""
-    n = len(pngs)
-    total_ms = sum(ms)
-    kt = ";".join(f"{sum(ms[:i]) / total_ms:.5f}" for i in range(n))
-    begin = f' begin="{-((sum(ms[:freeze_frame]) + ms[freeze_frame] / 2) / 1000):.3f}s"' \
-        if freeze_frame is not None else ""
-    out = []
-    for fi, b64 in enumerate(pngs):
-        base = "" if fi == 0 else ' opacity="0"'
-        vals = ";".join("1" if k == fi else "0" for k in range(n))
-        out.append(f'<image{base} width="{BOX[0]}" height="{BOX[1]}" '
-                   f'href="data:image/png;base64,{b64}">'
-                   f'<animate attributeName="opacity" calcMode="discrete" '
-                   f'values="{vals}" keyTimes="{kt}" dur="{total_ms}ms" '
-                   f'repeatCount="indefinite"{begin}/></image>')
-    return out
+def pet_timeline(slot, tier):
+    """Build one repeating timeline, restarting each state at its first frame."""
+    sheet = BEAT[slot][tier] if slot in BEAT else [("idle", 1)]
+    timeline = []
+    for state, loops in sheet:
+        ms = SLEEP_MS if slot == "night" else STATES[state][0]
+        for _ in range(loops):
+            timeline.extend((state, frame, duration) for frame, duration in enumerate(ms))
+    return timeline
 
 
 def pet_scene(x, y, slot, tier, freeze=None):
-    """Idle base layer + beat-sheet overlay groups. freeze=(state, frame)
-    pins an overlay state visible and one of its frames at t=0 (two-level
-    negative begin: the group's macro window midpoint + the frame's native
-    step midpoint)."""
-    fstate, fframe = freeze if freeze else (None, None)
-    sheet = BEAT[slot][tier] if slot in BEAT else []  # night: no overlays, idle sleeps
-    idle_ms = SLEEP_MS if slot == "night" else STATES["idle"][0]
-    out = [f'<g transform="translate({x},{y})">']
-    out += _flip_images(idle_ms, STATES["idle"][1],
-                        fframe if (fstate == "idle" or slot == "night") else None)
-    macro = sum(sum(STATES[st][0]) * loops for st, loops in sheet)
-    windows = {}  # state -> [(start_ms, end_ms)] on the macro cycle
-    t = 0
-    for st, loops in sheet:
-        cyc = sum(STATES[st][0]) * loops
-        if st != "idle":
-            windows.setdefault(st, []).append((t, t + cyc))
-        t += cyc
-    for st, wins in windows.items():
-        ms, pngs = STATES[st]
-        vals, kt = ["0"], [0.0]
-        for s0, s1 in wins:
-            vals += ["1", "0"]
-            kt += [s0 / macro, s1 / macro]
-        obegin = fbegin = ""
-        if fstate == st:
-            s0, s1 = wins[0]
-            obegin = f' begin="{-((s0 + (s1 - s0) / 2) / 1000):.3f}s"'
-            fbegin = True
-        out.append(f'<g opacity="0"><animate attributeName="opacity" '
-                   f'calcMode="discrete" values="{";".join(vals)}" '
-                   f'keyTimes="{";".join(f"{v:.5f}" for v in kt)}" '
-                   f'dur="{macro}ms" repeatCount="indefinite"{obegin}/>')
-        out += _flip_images(ms, pngs, fframe if fbegin else None)
-        out.append("</g>")
-    out.append("</g>")
+    """Display exactly one sprite frame using a shared macro-cycle clock.
+
+    A second, static image is used when reduced motion is requested. The freeze
+    option shifts the shared clock to the middle of a requested frame for
+    screenshot forensics; it does not alter the animation's normal timeline.
+    """
+    timeline = pet_timeline(slot, tier)
+    total = sum(duration for _, _, duration in timeline)
+    begin = ""
+    if freeze:
+        elapsed = 0
+        for state, frame, duration in timeline:
+            if (state, frame) == freeze:
+                begin = f' begin="{-((elapsed + duration / 2) / 1000):.3f}s"'
+                break
+            elapsed += duration
+        else:
+            raise ValueError(f"frame {freeze!r} is not present in this timeline")
+
+    # Each sprite is present only once. Every opacity animation uses the same
+    # clock and boundary list, so no underlying frame can show through.
+    boundaries = []
+    elapsed = 0
+    for state, frame, duration in timeline:
+        boundaries.append((elapsed, state, frame))
+        elapsed += duration
+    frames = dict.fromkeys((state, frame) for _, state, frame in boundaries)
+    out = [f'<g transform="translate({x},{y})"><g class="pet-animated">']
+    for state, frame in frames:
+        changes = []
+        previous = None
+        for start, current_state, current_frame in boundaries:
+            visible = int((state, frame) == (current_state, current_frame))
+            if visible != previous:
+                changes.append((start, visible))
+                previous = visible
+        times = ";".join(f"{start / total:.8f}" for start, _ in changes)
+        values = ";".join(str(visible) for _, visible in changes)
+        png = STATES[state][1][frame]
+        out.append(f'<image opacity="{changes[0][1]}" width="{BOX[0]}" height="{BOX[1]}" '
+                   f'href="data:image/png;base64,{png}">'
+                   f'<animate attributeName="opacity" calcMode="discrete" '
+                   f'values="{values}" keyTimes="{times}" dur="{total}ms" '
+                   f'repeatCount="indefinite"{begin}/></image>')
+    static_frame = 3 if slot == "night" else 0
+    png = STATES["idle"][1][static_frame]
+    out.append(f'</g><image class="pet-static" width="{BOX[0]}" height="{BOX[1]}" '
+               f'href="data:image/png;base64,{png}"/></g>')
     return "".join(out)
 
 
@@ -565,7 +563,10 @@ def build_css():
     .hbar  {{ transform-box:fill-box; transform-origin:left center; animation:growx .45s ease-out backwards; }}
     @keyframes on    {{ to {{ opacity:1; }} }}
     @keyframes growx {{ from {{ transform:scaleX(0); }} }}
+    .pet-static {{ display:none; }}
     @media (prefers-reduced-motion: reduce) {{
+      .pet-animated {{ display:none; }}
+      .pet-static {{ display:inline; }}
       * {{ animation: none !important; }}
       .ok, .rv {{ opacity:1; }}
       .hbar {{ animation:none; }}
