@@ -18,15 +18,15 @@ CSS = """
 .card-reveal {opacity:1;animation:card-on .01s step-start backwards;animation-delay:var(--delay,0s)}
 .card-bar {transform-box:fill-box;transform-origin:left center;animation:card-grow .95s ease-out backwards;animation-delay:var(--delay,0s)}
 .card-column {transform-box:fill-box;transform-origin:center bottom;animation:card-rise .95s ease-out backwards;animation-delay:var(--delay,0s)}
-.trend-sweep {transform-box:view-box;animation:trend-sweep .95s ease-out 1.43s backwards}
-@keyframes trend-sweep {from {transform:scaleX(0)} to {transform:scaleX(1)}}
+.trend-curve {animation:trend-sweep .95s ease-out 1.43s backwards}
+@keyframes trend-sweep {from {clip-path:inset(-3px 100% -3px -3px)} to {clip-path:inset(-3px -3px -3px -3px)}}
 @keyframes card-on {from {opacity:0} to {opacity:1}}
 /* A visible resting state avoids steps(1,end) rounding below the final step. */
 .ok, .rv {opacity:1;animation-fill-mode:backwards;animation-timing-function:step-start}
 @keyframes on {from {opacity:0} to {opacity:1}}
 @keyframes card-grow {from {transform:scaleX(0)}}
 @keyframes card-rise {from {transform:scaleY(0)}}
-@media(prefers-reduced-motion:reduce){.card-reveal{opacity:1;animation:none!important}.card-bar,.card-column,.trend-sweep{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.card-reveal{opacity:1;animation:none!important}.card-bar,.card-column,.trend-curve{animation:none!important}}
 """
 
 def wrap(root, el, delay, cls='card-reveal'):
@@ -125,23 +125,11 @@ def arcade_boot(root, theme):
 
 def trend_reveal(root):
     """Reveal the rolling average with the columns, then keep it at rest."""
-    curves = [e for e in root.iter() if tag(e) == 'polyline']
-    if not curves:
-        return
-    defs = node('defs')
-    for i, curve in enumerate(curves):
-        points = [tuple(map(float, p.split(','))) for p in curve.get('points').split()]
-        if not points:
-            continue
-        xmin, xmax = min(x for x, y in points) - 3, max(x for x, y in points) + 3
-        ymin, ymax = min(y for x, y in points) - 3, max(y for x, y in points) + 3
-        clip_id = f'trend-reveal-{i}'
-        clip = node('clipPath', id=clip_id, clipPathUnits='userSpaceOnUse')
-        clip.append(node('rect', x=xmin, y=ymin, width=xmax - xmin, height=ymax - ymin,
-                         **{'class': 'trend-sweep', 'style': f'transform-origin:{xmin}px 0px'}))
-        defs.append(clip)
-        curve.set('clip-path', f'url(#{clip_id})')
-    root.insert(0, defs)
+    # Animate the painted curve itself: transforms inside a referenced clipPath
+    # can update their computed style without invalidating an embedded SVG image.
+    for curve in root.iter():
+        if tag(curve) == 'polyline':
+            curve.set('class', (curve.get('class', '') + ' trend-curve').strip())
 
 
 def animate_card(svg, kind, theme):
