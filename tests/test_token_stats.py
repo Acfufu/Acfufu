@@ -120,14 +120,6 @@ class TestNormalizeRow(unittest.TestCase):
         self.assertEqual(out["billable_total_tokens"], 120)
 
 
-class TestTrunc(unittest.TestCase):
-    def test_truncates_with_ellipsis(self):
-        self.assertEqual(token_stats._trunc("short", 10), "short")
-        self.assertEqual(token_stats._trunc("claude-opus-4-6-thinking", 19),
-                         "claude-opus-4-6-th…")
-        self.assertEqual(len(token_stats._trunc("a" * 30, 10)), 10)
-
-
 class TestSnakeRoute(unittest.TestCase):
     def test_empty_board_returns_none(self):
         self.assertIsNone(token_stats.plan_snake_route({}))

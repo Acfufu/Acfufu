@@ -132,7 +132,8 @@ def _bar_layout(r, zh, ys, acc):
     工具 Top5+Other（悬停带模型数，Other 展开前 5 明细）；
     模型 Top7+Other（Other 分母/明细取 merged 全榜，不受 models[:10] 影响）；
     分母统一=总 token；图例按 Plex 7.2px/字符贪心换行。
-    纵向编排（2026-11-02 二次调整）：活动区 → 趋势区 → 双条区 → 页脚。"""
+    纵向编排（2026-11-02 定序，2026-11-04 压缩：行距 20→18、五处间距收紧，区块 144→124px）：
+    活动区 → 趋势区 → 双条区 → 页脚。"""
     total = r["total_tokens"]
     agents = sorted(((n, t) for n, t in (r["by_agent"] or {}).items() if t > 0),
                     key=lambda x: -x[1])
@@ -192,13 +193,13 @@ def _bar_layout(r, zh, ys, acc):
     rows_tool, rows_model = _rows(tool_segs), _rows(model_segs)
     yo = (ys + 279) + 24 - 496      # lg_y = ys+279；趋势分隔线 = lg_y+24，内部 -496+yo
     bt = 694 + yo + 13              # 双条标题 = 趋势末(yv+4 = 694+yo) + 13
-    leg2_end = bt + 112 + 20 * (rows_tool + rows_model - 2)
-    foot_div = leg2_end + 12
+    leg2_end = bt + 96 + 18 * (rows_tool + rows_model - 2)
+    foot_div = leg2_end + 10
     tt = fmt_tokens(total)
     cap = f"共 {tt} · {n_models} 个模型" if zh else f"{tt} total · {n_models} models"
     return dict(tool_segs=tool_segs, model_segs=model_segs, rows_tool=rows_tool,
                 rows_model=rows_model, cap=cap, yo=yo, bt=bt,
-                foot_div=foot_div, foot_text=foot_div + 28, h=foot_div + 48)
+                foot_div=foot_div, foot_text=foot_div + 26, h=foot_div + 44)
 
 # 终端卡视觉语言（与 scripts/gen_acfufu_card.py 同族）：等宽字体 + Plex 子集内嵌。
 # gen-cache 里的 plex b64 是按画像卡字符集裁的子集；缺字符走系统回退，不报错。
@@ -1295,21 +1296,21 @@ def svg_card(r, dark=True, zh=False, live=None):
                 rows.append(f'<text x="{lx + 14:.1f}" y="{ly:.1f}" font-size="12" font-family="{MONO}">'
                             f'<tspan font-weight="500" class="text2">{esc(name)}</tspan>'
                             f'<tspan class="muted"> {s}</tspan></text>')
-            ly += 20
+            ly += 18
         return "".join(rows), ly - 20
 
     text(X0, _bt, L["by_tool"], 11, 600, "muted", spacing="2")
     text(X1, _bt, LAY["cap"], 10.5, 400, "faint", anchor="end", num=True)
-    lines.append(_seg_rects(X0, _bt + 10, CW, 10, LAY["tool_segs"]))
-    _lg, _leg_end = _legend_svg(X0, _bt + 40, CW, LAY["tool_segs"])
+    lines.append(_seg_rects(X0, _bt + 9, CW, 10, LAY["tool_segs"]))
+    _lg, _leg_end = _legend_svg(X0, _bt + 37, CW, LAY["tool_segs"])
     lines.append(_lg)
 
-    _div = _leg_end + 16
+    _div = _leg_end + 11
     lines.append(f'<line x1="{X0}" y1="{_div}" x2="{X1}" y2="{_div}" stroke="{PAL["track"]}" stroke-width="1"/>')
-    text(X0, _div + 16, L["top_models"], 11, 600, "muted", spacing="2")
-    text(X1, _div + 16, LAY["cap"], 10.5, 400, "faint", anchor="end", num=True)
-    lines.append(_seg_rects(X0, _div + 26, CW, 10, LAY["model_segs"]))
-    _lg2, _leg_end2 = _legend_svg(X0, _div + 56, CW, LAY["model_segs"])
+    text(X0, _div + 14, L["top_models"], 11, 600, "muted", spacing="2")
+    text(X1, _div + 14, LAY["cap"], 10.5, 400, "faint", anchor="end", num=True)
+    lines.append(_seg_rects(X0, _div + 23, CW, 10, LAY["model_segs"]))
+    _lg2, _leg_end2 = _legend_svg(X0, _div + 48, CW, LAY["model_segs"])
     lines.append(_lg2)
 
     # ===== 页脚（右侧接管 whoami 卡退场后的 daemon LIVE 叙事） =====
