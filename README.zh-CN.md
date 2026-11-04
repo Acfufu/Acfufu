@@ -42,4 +42,34 @@
 
 `→ guard ` [reach-guard](https://github.com/Acfufu/reach-guard) · 面向 Agent-Reach 及相关命令行工具的 Python 包装层，提供请求节奏控制、配额和熔断机制。
 
+<details>
+<summary>更多项目</summary>
+
+`→ wiki  ` [zcode-repo-wiki](https://github.com/Acfufu/zcode-repo-wiki) · 在本地生成代码仓库 Wiki，并构建为自包含的 HTML 站点。
+
+`→ ops   ` [oncall-agent](https://github.com/Acfufu/oncall-agent) · 只读故障诊断工作台，保留来源快照与带引用的报告。
+
+`→ launch` [ALAS Launcher](https://github.com/Acfufu/alas-launcher) · 基于 Tauri 的 AzurLaneAutoScript 桌面启动器。
+
+`→ play  ` [Gull Arcade](https://github.com/Acfufu/gull-arcade) · 三款海鸥骑自行车的 Canvas 小游戏，可离线游玩。
+
+</details>
+
+<details>
+<summary>开源贡献</summary>
+
+向其他项目提交的部分 PR：
+
+`→ tokens` [TokenTracker #1014](https://github.com/xiufengsun/TokenTracker/pull/1014) · 修复提供方字段更名导致的 ZCode 历史用量遗漏。`已合并`
+
+`→ auth  ` [OpenChamber #6060](https://github.com/openchamber/openchamber/pull/6060) · 解锁失败后恢复密码输入框焦点。`已合并`
+
+`→ client` [tokscale #28](https://github.com/Javis603/tokscale/pull/28) · 将 WorkBuddy AI 与 WorkBuddy 的用量分开统计。`开放中`
+
+`→ macos ` [MaaMacGui #168](https://github.com/MaaAssistantArknights/MaaMacGui/pull/168) · 新增可选的登录时启动功能，提供登录项状态与恢复操作。`开放中`
+
+</details>
+
 `→ source` [本主页源码](https://github.com/Acfufu/Acfufu) · SVG 卡片、Token 看板，以及由 Issues 驱动的留言墙。
+
+`→ repos ` [查看全部仓库](https://github.com/Acfufu?tab=repositories)

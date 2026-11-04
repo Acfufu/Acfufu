@@ -42,4 +42,34 @@ My AI coding activity, with token usage and cost estimates by tool and model, an
 
 `→ guard ` [reach-guard](https://github.com/Acfufu/reach-guard) · A Python wrapper for Agent-Reach and related command-line tools, with request pacing, quotas, and circuit breakers.
 
+<details>
+<summary>More projects</summary>
+
+`→ wiki  ` [zcode-repo-wiki](https://github.com/Acfufu/zcode-repo-wiki) · Generate a local repository wiki and build it into a self-contained HTML site.
+
+`→ ops   ` [oncall-agent](https://github.com/Acfufu/oncall-agent) · A read-only workspace for incident diagnosis, with source snapshots and cited reports.
+
+`→ launch` [ALAS Launcher](https://github.com/Acfufu/alas-launcher) · A Tauri desktop launcher for AzurLaneAutoScript.
+
+`→ play  ` [Gull Arcade](https://github.com/Acfufu/gull-arcade) · Three offline Canvas games about a seagull on a bicycle.
+
+</details>
+
+<details>
+<summary>Open-source contributions</summary>
+
+Selected pull requests to other projects:
+
+`→ tokens` [TokenTracker #1014](https://github.com/xiufengsun/TokenTracker/pull/1014) · Restore ZCode usage history after a provider field rename. `MERGED`
+
+`→ auth  ` [OpenChamber #6060](https://github.com/openchamber/openchamber/pull/6060) · Restore password field focus after a failed unlock. `MERGED`
+
+`→ client` [tokscale #28](https://github.com/Javis603/tokscale/pull/28) · Track WorkBuddy AI usage separately from WorkBuddy. `OPEN`
+
+`→ macos ` [MaaMacGui #168](https://github.com/MaaAssistantArknights/MaaMacGui/pull/168) · Add optional launch at login with login-item status and recovery controls. `OPEN`
+
+</details>
+
 `→ source` [this profile](https://github.com/Acfufu/Acfufu) · SVG cards, the token dashboard, and the issue-powered guestbook.
+
+`→ repos ` [browse all repositories](https://github.com/Acfufu?tab=repositories)
