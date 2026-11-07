@@ -8,9 +8,9 @@ This is my GitHub profile: a pixel pet, an AI token usage dashboard, and a guest
 `→ explore` [projects](#projects) · [token usage](#ai-token-usage) · [guestbook](#guestbook)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1794002420">
-  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg?v=1794002420">
-  <img src="assets/profile-dark.svg?v=1794002420" width="100%" alt="Acfufu's profile card with Blossom the pixel pet and GitHub contribution statistics.">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/profile-dark.svg?v=1794013230">
+  <source media="(prefers-color-scheme: light)" srcset="assets/profile-light.svg?v=1794013230">
+  <img src="assets/profile-dark.svg?v=1794013230" width="100%" alt="Acfufu's profile card with Blossom the pixel pet and GitHub contribution statistics.">
 </picture>
 
 ## AI token usage
@@ -18,17 +18,17 @@ This is my GitHub profile: a pixel pet, an AI token usage dashboard, and a guest
 My AI coding activity, with token usage and cost estimates by tool and model, an activity heatmap, and daily trends.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1794002420">
-  <source media="(prefers-color-scheme: light)" srcset="token-stats-light.svg?v=1794002420">
-  <img src="token-stats-dark.svg?v=1794002420" width="100%" alt="AI token usage dashboard: totals, estimated costs, activity heatmap, tools, models, and daily trends.">
+  <source media="(prefers-color-scheme: dark)" srcset="token-stats-dark.svg?v=1794013230">
+  <source media="(prefers-color-scheme: light)" srcset="token-stats-light.svg?v=1794013230">
+  <img src="token-stats-dark.svg?v=1794013230" width="100%" alt="AI token usage dashboard: totals, estimated costs, activity heatmap, tools, models, and daily trends.">
 </picture>
 
 ## Guestbook
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-dark.svg?v=1794002420">
-  <source media="(prefers-color-scheme: light)" srcset="assets/wall-light.svg?v=1794002420">
-  <img src="assets/wall-dark.svg?v=1794002420" width="100%" alt="acfufu wall — leave a message">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/wall-dark.svg?v=1794013230">
+  <source media="(prefers-color-scheme: light)" srcset="assets/wall-light.svg?v=1794013230">
+  <img src="assets/wall-dark.svg?v=1794013230" width="100%" alt="acfufu wall — leave a message">
 </picture>
 
 `→ reach ` [farrell-z.github.io](https://farrell-z.github.io) · [github.com/Acfufu](https://github.com/Acfufu)<br>
