@@ -289,6 +289,10 @@
 </g><g class="card-reveal" style="--delay:0.80s"><rect x="688" y="286" width="10" height="10" rx="2" class="m34_6" fill="#4a3a12" />
 </g><g class="card-reveal" style="--delay:0.81s"><rect x="701" y="208" width="10" height="10" rx="2" class="m35_0" fill="#4a3a12" />
 </g><g class="card-reveal" style="--delay:0.81s"><rect x="701" y="221" width="10" height="10" rx="2" class="m35_1" fill="#4a3a12" />
+</g><g class="card-reveal" style="--delay:0.81s"><rect x="701" y="234" width="10" height="10" rx="2" class="h0" fill="#161b22" style="animation:boot35_234 39.600s steps(1,end) infinite" />
+</g><g class="card-reveal" style="--delay:0.81s"><rect x="701" y="247" width="10" height="10" rx="2" class="h0" fill="#161b22" style="animation:boot35_247 39.600s steps(1,end) infinite" />
+</g><g class="card-reveal" style="--delay:0.81s"><rect x="701" y="260" width="10" height="10" rx="2" class="h0" fill="#161b22" style="animation:boot35_260 39.600s steps(1,end) infinite" />
+</g><g class="card-reveal" style="--delay:0.81s"><rect x="701" y="273" width="10" height="10" rx="2" class="h0" fill="#161b22" style="animation:boot35_273 39.600s steps(1,end) infinite" />
 </g><g class="card-reveal" style="--delay:0.77s"><text x="628" y="325" font-size="10" font-weight="500" class="faint" text-anchor="end">Less</text>
 </g><g class="card-reveal" style="--delay:0.77s"><rect x="636" y="317" width="8" height="8" rx="1.5" class="h0" />
 </g><g class="card-reveal" style="--delay:0.77s"><rect x="646" y="317" width="8" height="8" rx="1.5" class="h1" />
@@ -297,7 +301,7 @@
 </g><g class="card-reveal" style="--delay:0.77s"><rect x="676" y="317" width="8" height="8" rx="1.5" class="h4" />
 </g><g class="card-reveal" style="--delay:0.77s"><text x="710" y="325" font-size="10" font-weight="500" class="faint" text-anchor="end">More</text>
 </g><g class="card-reveal" style="--delay:0.77s"><text x="740" y="244" font-size="9.5" font-weight="600" class="faint" text-anchor="start" letter-spacing="2">TODAY</text>
-</g><g class="card-reveal" style="--delay:0.77s"><text x="740" y="262" font-size="13" font-weight="600" class="text2 num" text-anchor="start">11.1M</text>
+</g><g class="card-reveal" style="--delay:0.77s"><text x="740" y="262" font-size="13" font-weight="600" class="text2 num" text-anchor="start">0</text>
 </g><style>@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }@keyframes km0_5 {0% {fill:#161b22;} 1.89394% {fill:#161b22;} 1.90394% {fill:#4a3a12;}  8.58586% { fill:#4a3a12; } 8.58586% { fill:#4a3a12; } 8.58586% { fill:#c9e4ff; } 8.83816% { fill:#79c0ff; } 9.84829% { fill:#58a6ff; } 11.86854% { fill:#4485d4; } 12.07514% { fill:#4485d4; } 12.12084% { fill:#161b22; } 13.08526% { fill:#161b22; } 13.13097% { fill:#c9e4ff; } 13.38419% { fill:#79c0ff; } 14.39431% { fill:#58a6ff; } 16.41457% { fill:#4485d4; } 18.64141% { fill:#4485d4; } 18.68712% { fill:#161b22; } 82.78215% { fill:#161b22; } 82.82785% { fill:#c9e4ff; } 83.08107% { fill:#79c0ff; } 84.09120% { fill:#58a6ff; } 86.11145% { fill:#4485d4; } 89.39413% { fill:#3a6cb0; } 92.88341% { fill:#3a6cb0; } 92.92912% { fill:#161b22; } 100.00000% { fill:#161b22; } }
 .m0_5 { animation: km0_5 39.600s linear infinite; }@keyframes km1_5 {0% {fill:#161b22;} 1.98773% {fill:#161b22;} 1.99773% {fill:#161b22;}  8.58586% { fill:#161b22; } 8.79245% { fill:#161b22; } 8.83816% { fill:#c9e4ff; } 9.09046% { fill:#79c0ff; } 10.10059% { fill:#58a6ff; } 12.12084% { fill:#4485d4; } 12.58066% { fill:#4485d4; } 12.62636% { fill:#161b22; } 100.00000% { fill:#161b22; } }
 .m1_5 { animation: km1_5 39.600s linear infinite; }@keyframes km2_5 {0% {fill:#161b22;} 2.08153% {fill:#161b22;} 2.09153% {fill:#4a3a12;}  8.58586% { fill:#4a3a12; } 9.04476% { fill:#4a3a12; } 9.09046% { fill:#c9e4ff; } 9.34368% { fill:#79c0ff; } 10.35381% { fill:#58a6ff; } 12.37406% { fill:#4485d4; } 12.83296% { fill:#4485d4; } 12.87867% { fill:#161b22; } 100.00000% { fill:#161b22; } }
@@ -708,48 +712,43 @@
 </g><g class="card-reveal" style="--delay:1.43s"><line x1="36" y1="398.0" x2="924" y2="398.0" stroke="#57606a" stroke-width="1" opacity="0.35" />
 </g><g class="card-reveal" style="--delay:1.43s"><line x1="36" y1="473" x2="924" y2="473" stroke="#161b22" stroke-width="1" />
 </g><defs><linearGradient id="tgd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f59e0b" stop-opacity="0.45" /><stop offset="1" stop-color="#f59e0b" stop-opacity="0.06" /></linearGradient></defs>
-<g class="card-column" style="--delay:1.43s"><rect x="36.0" y="453.7" width="22.0" height="19.3" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.44s"><rect x="55.6" y="472.8" width="22.0" height="0.2" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.47s"><rect x="86.2" y="469.6" width="22.0" height="3.4" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.49s"><rect x="116.8" y="472.3" width="22.0" height="0.7" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.51s"><rect x="147.5" y="470.1" width="22.0" height="2.9" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.54s"><rect x="178.1" y="442.5" width="22.0" height="30.5" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.56s"><rect x="208.7" y="462.5" width="22.0" height="10.5" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.58s"><rect x="239.3" y="466.2" width="22.0" height="6.8" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.60s"><rect x="269.9" y="454.9" width="22.0" height="18.1" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.63s"><rect x="300.6" y="460.2" width="22.0" height="12.8" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.65s"><rect x="331.2" y="429.6" width="22.0" height="43.4" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.67s"><rect x="361.8" y="398.5" width="22.0" height="74.5" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.69s"><rect x="392.4" y="385.3" width="22.0" height="87.7" rx="1" fill="#fbbf24" />
-</g><g class="card-column" style="--delay:1.72s"><rect x="423.0" y="429.9" width="22.0" height="43.1" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.74s"><rect x="453.7" y="428.5" width="22.0" height="44.5" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.76s"><rect x="484.3" y="464.0" width="22.0" height="9.0" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.79s"><rect x="514.9" y="462.3" width="22.0" height="10.7" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.81s"><rect x="545.5" y="453.8" width="22.0" height="19.2" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.83s"><rect x="576.1" y="452.3" width="22.0" height="20.7" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.85s"><rect x="606.8" y="454.4" width="22.0" height="18.6" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.88s"><rect x="637.4" y="451.6" width="22.0" height="21.4" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.90s"><rect x="668.0" y="471.5" width="22.0" height="1.5" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.92s"><rect x="698.6" y="470.1" width="22.0" height="2.9" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.95s"><rect x="729.3" y="471.3" width="22.0" height="1.7" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.97s"><rect x="759.9" y="455.1" width="22.0" height="17.9" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:1.99s"><rect x="790.5" y="456.7" width="22.0" height="16.3" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:2.01s"><rect x="821.1" y="468.1" width="22.0" height="4.9" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:2.04s"><rect x="851.7" y="466.5" width="22.0" height="6.5" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:2.06s"><rect x="882.4" y="463.1" width="22.0" height="9.9" rx="1" fill="url(#tgd)" />
-</g><g class="card-column" style="--delay:2.08s"><rect x="913.0" y="472.4" width="11.0" height="0.6" rx="1" fill="url(#tgd)" />
-</g><polyline points="36.0,453.7 66.6,463.3 97.2,465.4 127.9,467.1 158.5,467.7 189.1,463.5 219.7,463.3 250.3,465.1 281.0,462.6 311.6,461.2 342.2,455.1 372.8,444.9 403.4,436.8 434.1,432.1 464.7,426.7 495.3,428.0 525.9,428.3 556.6,431.8 587.2,439.4 617.8,449.3 648.4,452.4 679.0,458.6 709.7,459.4 740.3,460.7 770.9,460.9 801.5,461.5 832.1,463.5 862.8,465.6 893.4,464.4 924.0,464.7" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9" class="trend-curve" />
-<g class="card-reveal" style="--delay:1.43s"><circle cx="403.4" cy="385.3" r="4" fill="#fbbf24" stroke="#0a0e14" stroke-width="2" />
-</g><g class="card-reveal" style="--delay:1.43s"><text x="411.4" y="376.3" font-size="10" font-weight="600" class="text2" text-anchor="start">10/30 · 1.8B</text>
-</g><g class="card-reveal" style="--delay:1.43s"><line x1="66.6" y1="473" x2="66.6" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
-</g><g class="card-reveal" style="--delay:1.43s"><text x="66.6" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">10/19</text>
-</g><g class="card-reveal" style="--delay:1.43s"><line x1="281.0" y1="473" x2="281.0" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
-</g><g class="card-reveal" style="--delay:1.43s"><text x="281.0" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">10/26</text>
-</g><g class="card-reveal" style="--delay:1.43s"><line x1="495.3" y1="473" x2="495.3" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
-</g><g class="card-reveal" style="--delay:1.43s"><text x="495.3" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">11/2</text>
-</g><g class="card-reveal" style="--delay:1.43s"><line x1="709.7" y1="473" x2="709.7" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
-</g><g class="card-reveal" style="--delay:1.43s"><text x="709.7" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">11/9</text>
-</g><g class="card-reveal" style="--delay:1.43s"><line x1="924.0" y1="473" x2="924.0" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
+<g class="card-column" style="--delay:1.43s"><rect x="36.0" y="470.1" width="22.0" height="2.9" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.44s"><rect x="55.6" y="442.5" width="22.0" height="30.5" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.47s"><rect x="86.2" y="462.5" width="22.0" height="10.5" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.49s"><rect x="116.8" y="466.2" width="22.0" height="6.8" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.51s"><rect x="147.5" y="454.9" width="22.0" height="18.1" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.54s"><rect x="178.1" y="460.2" width="22.0" height="12.8" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.56s"><rect x="208.7" y="429.6" width="22.0" height="43.4" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.58s"><rect x="239.3" y="398.5" width="22.0" height="74.5" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.60s"><rect x="269.9" y="385.3" width="22.0" height="87.7" rx="1" fill="#fbbf24" />
+</g><g class="card-column" style="--delay:1.63s"><rect x="300.6" y="429.9" width="22.0" height="43.1" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.65s"><rect x="331.2" y="428.5" width="22.0" height="44.5" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.67s"><rect x="361.8" y="464.0" width="22.0" height="9.0" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.69s"><rect x="392.4" y="462.3" width="22.0" height="10.7" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.72s"><rect x="423.0" y="453.8" width="22.0" height="19.2" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.74s"><rect x="453.7" y="452.3" width="22.0" height="20.7" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.76s"><rect x="484.3" y="454.4" width="22.0" height="18.6" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.79s"><rect x="514.9" y="451.6" width="22.0" height="21.4" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.81s"><rect x="545.5" y="471.5" width="22.0" height="1.5" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.83s"><rect x="576.1" y="470.1" width="22.0" height="2.9" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.85s"><rect x="606.8" y="471.3" width="22.0" height="1.7" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.88s"><rect x="637.4" y="455.1" width="22.0" height="17.9" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.90s"><rect x="668.0" y="456.7" width="22.0" height="16.3" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.92s"><rect x="698.6" y="468.1" width="22.0" height="4.9" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.95s"><rect x="729.3" y="466.5" width="22.0" height="6.5" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.97s"><rect x="759.9" y="463.1" width="22.0" height="9.9" rx="1" fill="url(#tgd)" />
+</g><g class="card-column" style="--delay:1.99s"><rect x="790.5" y="472.4" width="22.0" height="0.6" rx="1" fill="url(#tgd)" />
+</g><polyline points="36.0,470.1 66.6,456.3 97.2,458.4 127.9,460.3 158.5,459.2 189.1,459.4 219.7,455.1 250.3,444.9 281.0,436.8 311.6,432.1 342.2,426.7 372.8,428.0 403.4,428.3 434.1,431.8 464.7,439.4 495.3,449.3 525.9,452.4 556.6,458.6 587.2,459.4 617.8,460.7 648.4,460.9 679.0,461.5 709.7,463.5 740.3,465.6 770.9,464.4 801.5,464.7" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9" class="trend-curve" />
+<g class="card-reveal" style="--delay:1.43s"><circle cx="281.0" cy="385.3" r="4" fill="#fbbf24" stroke="#0a0e14" stroke-width="2" />
+</g><g class="card-reveal" style="--delay:1.43s"><text x="289.0" y="376.3" font-size="10" font-weight="600" class="text2" text-anchor="start">10/30 · 1.8B</text>
+</g><g class="card-reveal" style="--delay:1.43s"><line x1="158.5" y1="473" x2="158.5" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
+</g><g class="card-reveal" style="--delay:1.43s"><text x="158.5" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">10/26</text>
+</g><g class="card-reveal" style="--delay:1.43s"><line x1="372.8" y1="473" x2="372.8" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
+</g><g class="card-reveal" style="--delay:1.43s"><text x="372.8" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">11/2</text>
+</g><g class="card-reveal" style="--delay:1.43s"><line x1="587.2" y1="473" x2="587.2" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
+</g><g class="card-reveal" style="--delay:1.43s"><text x="587.2" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">11/9</text>
+</g><g class="card-reveal" style="--delay:1.43s"><line x1="801.5" y1="473" x2="801.5" y2="478" stroke="#57606a" stroke-width="1" opacity="0.5" />
+</g><g class="card-reveal" style="--delay:1.43s"><text x="801.5" y="491" font-size="9.5" font-weight="500" class="faint" text-anchor="middle">11/16</text>
 </g><g class="card-reveal" style="--delay:2.09s"><circle cx="58.0" cy="508" r="3.5" fill="#fbbf24" />
 </g><g class="card-reveal" style="--delay:2.09s"><text x="68.0" y="513" font-size="9.5" font-weight="600" class="faint" letter-spacing="1.5">INPUT</text>
 </g><g class="card-reveal" style="--delay:2.09s"><text x="68.0" y="535" font-size="15" font-weight="700" class="text num">5.9B<tspan font-size="11" font-weight="500" class="muted"> · 4.8%</tspan></text>
@@ -776,7 +775,7 @@
 </g><g class="card-reveal" style="--delay:2.75s"><circle cx="40.5" cy="643.0" r="4.5" fill="#f59e0b" /></g><g class="card-reveal" style="--delay:2.75s"><text x="50.0" y="646.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">GLM-5.3 Flash</tspan><tspan class="muted"> 52.2%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="223.3" cy="643.0" r="4.5" fill="#58a6ff" /></g><g class="card-reveal" style="--delay:2.75s"><text x="232.8" y="646.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">DeepSeek V4.1 Flash</tspan><tspan class="muted"> 12.1%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="449.3" cy="643.0" r="4.5" fill="#51cf66" /></g><g class="card-reveal" style="--delay:2.75s"><text x="458.8" y="646.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">unknown</tspan><tspan class="muted"> 8%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="567.3" cy="643.0" r="4.5" fill="#e64980" /></g><g class="card-reveal" style="--delay:2.75s"><text x="576.8" y="646.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">DeepSeek V4 Flash</tspan><tspan class="muted"> 6.6%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="771.7" cy="643.0" r="4.5" fill="#22b8cf" /></g><g class="card-reveal" style="--delay:2.75s"><text x="781.2" y="646.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">GPT-5.6 Sol</tspan><tspan class="muted"> 5.6%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="40.5" cy="661.0" r="4.5" fill="#a371f7" /></g><g class="card-reveal" style="--delay:2.75s"><text x="50.0" y="664.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">GLM-5.3</tspan><tspan class="muted"> 3.2%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="172.9" cy="661.0" r="4.5" fill="#e3b341" /></g><g class="card-reveal" style="--delay:2.75s"><text x="182.4" y="664.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">MiniMax M2.7</tspan><tspan class="muted"> 3%</tspan></text></g><g class="card-reveal" style="--delay:2.75s"><circle cx="326.9" cy="661.0" r="4.5" fill="#8b949e" /></g><g class="card-reveal" style="--delay:2.75s"><text x="336.4" y="664.0" font-size="12" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace"><tspan font-weight="500" class="text2">Other</tspan><tspan class="muted"> 9.3%</tspan></text>
 </g><g class="card-reveal" style="--delay:3.63s"><line x1="36" y1="676" x2="924" y2="676" stroke="#161b22" stroke-width="1" />
 </g><g class="card-reveal" style="--delay:3.63s"><text x="36" y="702" font-size="10.5" font-weight="400" class="muted num" text-anchor="start">input 5.9B · output 468.0M · cached 95% · 738K conversations</text>
-</g><g class="card-reveal" style="--delay:3.63s"><text x="924" y="702" font-size="10.5" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" text-anchor="end"><tspan fill="#f0d861">[SYNC] manual sync · daemon off</tspan><tspan fill="#6e7f95"> · updated 2026-11-16</tspan></text>
+</g><g class="card-reveal" style="--delay:3.63s"><text x="924" y="702" font-size="10.5" font-family="'Plex',ui-monospace,'SF Mono',Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',monospace" text-anchor="end"><tspan fill="#f0d861">[SYNC] manual sync · daemon off</tspan><tspan fill="#6e7f95"> · updated 2026-11-20</tspan></text>
 </g><g class="card-reveal" style="--delay:0.73s"><rect x="610" y="234" width="10" height="10" rx="2" fill="#c9e4ff" class="arcade-seed" /></g><g class="card-reveal" style="--delay:0.77s"><text x="478.5" y="260" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#c9e4ff" class="arcade-ready" stroke="#0a0e14" stroke-width="4" paint-order="stroke">READY</text></g><g class="card-reveal" style="--delay:0.77s"><text x="478.5" y="260" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#c9e4ff" class="arcade-go" stroke="#0a0e14" stroke-width="4" paint-order="stroke">GO</text></g><g class="card-reveal" style="--delay:0.77s"><text x="144" y="325" fill="#58a6ff" font-size="9.5" font-family="monospace" class="arcade-zero">0/121.3B</text></g><style>@keyframes boot1_221 {0%,1.98773% {fill:#161b22} 1.99773%,100% {fill:#161b22}}
 @keyframes boot1_234 {0%,1.98773% {fill:#161b22} 1.99773%,100% {fill:#161b22}}
 @keyframes boot4_221 {0%,2.26912% {fill:#161b22} 2.27912%,100% {fill:#161b22}}
@@ -813,6 +812,10 @@
 @keyframes boot14_247 {0%,3.20707% {fill:#161b22} 3.21707%,100% {fill:#161b22}}
 @keyframes boot14_273 {0%,3.20707% {fill:#161b22} 3.21707%,100% {fill:#161b22}}
 @keyframes boot19_247 {0%,3.67605% {fill:#161b22} 3.68605%,100% {fill:#161b22}}
+@keyframes boot35_234 {0%,5.17677% {fill:#161b22} 5.18677%,100% {fill:#161b22}}
+@keyframes boot35_247 {0%,5.17677% {fill:#161b22} 5.18677%,100% {fill:#161b22}}
+@keyframes boot35_260 {0%,5.17677% {fill:#161b22} 5.18677%,100% {fill:#161b22}}
+@keyframes boot35_273 {0%,5.17677% {fill:#161b22} 5.18677%,100% {fill:#161b22}}
 @keyframes arcade-seed {0.00000% {opacity:0} 5.42929% {opacity:1} 6.01010% {opacity:0} 6.56566% {opacity:1} 7.14646% {opacity:0} 7.70202% {opacity:1} 8.58586% {opacity:0} 100.00000% {opacity:0}}
 .arcade-seed {opacity:0;animation:arcade-seed 39.600s steps(1,end) infinite}
 @keyframes arcade-ready {0%,5.35354% {opacity:0} 5.37879%,7.95455% {opacity:1} 7.97980%,100% {opacity:0}}
